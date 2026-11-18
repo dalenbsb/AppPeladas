@@ -18,11 +18,18 @@ npx tsc --noEmit
 
 ## Dados
 
-- Persistência: `expo-sqlite` via `SqlExecutor` (`src/db/sqlExecutor.ts`)
+- Persistência: `expo-sqlite` **nativo** via `SqlExecutor` (`src/db/sqlExecutor.ts` + `expoSqliteAdapter.ts`)
+- Web: **fora do v1** — `platforms: ["ios","android"]`; stub `expoSqliteAdapter.web.ts` evita puxar `wa-sqlite.wasm`
 - Smoke Node: `node:sqlite` em `src/db/nodeSqliteAdapter.ts` (não importar no bundle do app; Node >= 22.13)
 - Backup v1: `src/features/backup/backupService.ts` — import **substitui** tudo após validar schema e `confirmReplace: true`
 - UI de export/import: `src/features/backup/BackupPanel.tsx` (Configurações)
 - Estado de lista: Zustand em `src/features/peladas/peladaStore.ts`
+
+## Como rodar
+
+```bash
+npx expo start --android   # ou --ios / Expo Go; NÃO use --web
+```
 
 ## Navegação
 

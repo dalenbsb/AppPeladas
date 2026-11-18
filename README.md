@@ -2,17 +2,40 @@
 
 App offline para organizar peladas (futebol amador): atletas, fila, partida ao vivo e estatísticas.
 
-**Stack:** Expo (React Native) + TypeScript + Expo Router + `expo-sqlite`.
+**Stack:** Expo (React Native) + TypeScript + Expo Router + `expo-sqlite` (nativo iOS/Android).
 
 ## Fase 3 (atual)
 
 CRUD de atletas por pelada: lista + FAB, formulário (foto via `expo-image-picker`, nome, posição, celular, nascimento, ativo, mensalista, camisa, melhor pé), editar e excluir com confirmação. Hub → Atletas já leva à lista. Jogos/Estatísticas seguem como placeholders (Fases 4+).
 
-### Rodar o app
+### Rodar o app (mobile — não use web)
+
+v1 é **só iOS/Android**. O SQLite do app usa o módulo nativo; no navegador o Metro tenta carregar `wa-sqlite.wasm` e falha.
 
 ```bash
 npm install
 npx expo start
+```
+
+No menu do Expo, escolha **Android** (`a`) ou **iOS** (`i`), ou:
+
+```bash
+npx expo start --android
+npx expo start --ios
+```
+
+No Windows, o caminho típico é Expo Go no celular (mesmo Wi‑Fi) ou emulador Android:
+
+```bash
+npm run android
+```
+
+Evite `w` / `--web` — web não é suportado no v1.
+
+Se o Metro ainda estiver com cache antigo:
+
+```bash
+npx expo start --clear --android
 ```
 
 ### Smoke test (backup round-trip)
@@ -36,7 +59,7 @@ npm run format
 
 ```
 app/                      # Expo Router (Home, pelada, Hub, atletas)
-src/db/                   # SQLite, migrations, repositórios, DatabaseProvider
+src/db/                   # SQLite nativo, migrations, repositórios, DatabaseProvider
 src/domain/               # Tipos + validação do backup
 src/features/peladas/     # Formulário e store de peladas
 src/features/atletas/     # Formulário e labels de atletas
