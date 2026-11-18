@@ -21,7 +21,18 @@ npx tsc --noEmit
 - Persistência: `expo-sqlite` via `SqlExecutor` (`src/db/sqlExecutor.ts`)
 - Smoke Node: `node:sqlite` em `src/db/nodeSqliteAdapter.ts` (não importar no bundle do app; Node >= 22.13)
 - Backup v1: `src/features/backup/backupService.ts` — import **substitui** tudo após validar schema e `confirmReplace: true`
+- UI de export/import: `src/features/backup/BackupPanel.tsx` (Configurações)
+- Estado de lista: Zustand em `src/features/peladas/peladaStore.ts`
 
-## Fora do escopo da Fase 1
+## Navegação (Fase 2)
 
-UI completa de Home / atletas / partida — só placeholder que prova DB/backup.
+- Home (`app/index.tsx`): lista + Entrar + FAB `+`
+- Nova pelada: `app/pelada/nova.tsx`
+- Hub: `app/pelada/[peladaId]/index.tsx` → Atletas / Jogos / Estatísticas / Configurações
+- Formulário compartilhado: `src/features/peladas/PeladaForm.tsx`
+
+## Escopo por fase
+
+- Fase 1: scaffold + DB + backup — feito
+- Fase 2: Home + cadastro/edição + Hub + Config — atual
+- Fase 3+: atletas / partida / stats (placeholders no Hub)

@@ -23,10 +23,9 @@ export class EventoRepository {
   }
 
   async getById(id: string): Promise<EventoPartida | null> {
-    const row = await this.db.getFirst<EventoRow>(
-      'SELECT * FROM eventos_partida WHERE id = ?',
-      [id],
-    );
+    const row = await this.db.getFirst<EventoRow>('SELECT * FROM eventos_partida WHERE id = ?', [
+      id,
+    ]);
     return row ? mapEvento(row) : null;
   }
 

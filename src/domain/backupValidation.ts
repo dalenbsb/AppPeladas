@@ -81,10 +81,7 @@ function validateAtleta(item: unknown, index: number): Atleta {
     item.numeroCamisa === null || typeof item.numeroCamisa === 'number',
     `atletas[${index}].numeroCamisa inválido`,
   );
-  assert(
-    item.melhorPe === null || isString(item.melhorPe),
-    `atletas[${index}].melhorPe inválido`,
-  );
+  assert(item.melhorPe === null || isString(item.melhorPe), `atletas[${index}].melhorPe inválido`);
   assert(isString(item.createdAt), `atletas[${index}].createdAt inválido`);
   assert(isString(item.updatedAt), `atletas[${index}].updatedAt inválido`);
   return item as unknown as Atleta;
@@ -128,10 +125,7 @@ function validateEvento(item: unknown, index: number): EventoPartida {
   assert(isString(item.partidaId), `eventos[${index}].partidaId inválido`);
   assert(isString(item.tipo), `eventos[${index}].tipo inválido`);
   assert(isString(item.atletaId), `eventos[${index}].atletaId inválido`);
-  assert(
-    item.meta === null || isObject(item.meta),
-    `eventos[${index}].meta inválido`,
-  );
+  assert(item.meta === null || isObject(item.meta), `eventos[${index}].meta inválido`);
   assert(isString(item.createdAt), `eventos[${index}].createdAt inválido`);
   return item as unknown as EventoPartida;
 }

@@ -4,3 +4,4 @@ export { migrate } from './migrate';
 export { createRepositories } from './repositories';
 export type { Repositories } from './repositories';
 export type { SqlExecutor } from './sqlExecutor';
+export { DatabaseProvider, useDatabase, useRepositories } from './DatabaseProvider';

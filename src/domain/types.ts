@@ -1,43 +1,21 @@
 /** Domínio AppPeladas — tipos da Fase 1 (alinhados ao plano v1). */
 
 export type PosicaoAtleta =
-  | 'goleiro'
-  | 'zagueiro'
-  | 'lateral'
-  | 'volante'
-  | 'meia'
-  | 'atacante'
-  | 'sem_posicao';
+  'goleiro' | 'zagueiro' | 'lateral' | 'volante' | 'meia' | 'atacante' | 'sem_posicao';
 
 export type MelhorPe = 'direito' | 'esquerdo';
 
 export type CriterioSorteio =
-  | 'ordem_chegada'
-  | 'sem_sorteio'
-  | 'considerar_posicao'
-  | 'nivel_tecnico';
+  'ordem_chegada' | 'sem_sorteio' | 'considerar_posicao' | 'nivel_tecnico';
 
-export type RegraEmpate =
-  | 'sai_os_dois'
-  | 'penaltis'
-  | 'fica_quem_esta_ganhando';
+export type RegraEmpate = 'sai_os_dois' | 'penaltis' | 'fica_quem_esta_ganhando';
 
 export type SessaoStatus = 'aberta' | 'em_partida' | 'encerrada';
 
-export type MotivoFimPartida =
-  | 'tempo'
-  | 'limite_gols'
-  | 'manual'
-  | 'empate_resolvido'
-  | null;
+export type MotivoFimPartida = 'tempo' | 'limite_gols' | 'manual' | 'empate_resolvido' | null;
 
 export type TipoEventoPartida =
-  | 'gol'
-  | 'gol_contra'
-  | 'assistencia'
-  | 'amarelo'
-  | 'vermelho'
-  | 'remocao';
+  'gol' | 'gol_contra' | 'assistencia' | 'amarelo' | 'vermelho' | 'remocao';
 
 export interface Pelada {
   id: string;

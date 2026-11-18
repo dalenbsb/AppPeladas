@@ -1,121 +1,95 @@
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { openAppDatabase } from '@/db';
-import { createRepositories } from '@/db/repositories';
-import {
-  exportToJson,
-  importFromJson,
-  wipeAllData,
-} from '@/features/backup/backupService';
-import type { BackupJsonV1 } from '@/domain/types';
+import { Fab } from '@/components/Fab';
+import { useRepositories } from '@/db/DatabaseProvider';
+import type { Pelada } from '@/domain/types';
+import { usePeladaStore } from '@/features/peladas/peladaStore';
+import { colors } from '@/theme/colors';
 
-type Status = 'idle' | 'loading' | 'ok' | 'error';
+export default function HomeScreen() {
+  const router = useRouter();
+  const repos = useRepositories();
+  const setPeladas = usePeladaStore((s) => s.setPeladas);
+  const [peladas, setLocalPeladas] = useState<Pelada[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-/**
- * Placeholder da Fase 1 — prova DB + backup round-trip.
- * UI completa de Home/atletas/partida fica fora do escopo.
- */
-export default function HomePlaceholder() {
-  const [status, setStatus] = useState<Status>('idle');
-  const [message, setMessage] = useState(
-    'Toque para gravar pelada fake, exportar, limpar e importar.',
-  );
-  const [peladaCount, setPeladaCount] = useState<number | null>(null);
-
-  const runSmoke = useCallback(async () => {
-    setStatus('loading');
-    setMessage('Gravando pelada fake…');
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const db = await openAppDatabase();
-      const repos = createRepositories(db);
-
-      await wipeAllData(db);
-
-      const pelada = await repos.peladas.create({
-        nome: 'Pelada Smoke',
-        descricao: 'Gerada no placeholder Fase 1',
-        duracaoMin: 7,
-        limiteGols: 3,
-        jogadoresPorEquipe: 5,
-        criteriosSorteio: ['ordem_chegada', 'considerar_posicao'],
-        regraEmpate: 'sai_os_dois',
-        telaSempreLigada: false,
-        amareloDoisMinutos: true,
-      });
-
-      const atleta = await repos.atletas.create({
-        peladaId: pelada.id,
-        fotoUri: null,
-        nome: 'Atleta Demo',
-        posicao: 'atacante',
-        celular: null,
-        dataNascimento: null,
-        ativo: true,
-        mensalista: false,
-        numeroCamisa: 9,
-        melhorPe: 'esquerdo',
-      });
-
-      const exported: BackupJsonV1 = await exportToJson(db);
-      setMessage('Export ok. Limpando e importando…');
-
-      await wipeAllData(db);
-      await importFromJson(db, exported, { confirmReplace: true });
-
-      const restored = await exportToJson(db);
-      const same =
-        restored.peladas[0]?.id === pelada.id &&
-        restored.atletas[0]?.id === atleta.id &&
-        restored.peladas.length === 1;
-
-      if (!same) {
-        throw new Error('Dados restaurados não conferem.');
-      }
-
-      setPeladaCount((await repos.peladas.list()).length);
-      setStatus('ok');
-      setMessage('Round-trip OK: export → wipe → import.');
-    } catch (error) {
-      setStatus('error');
-      setMessage(error instanceof Error ? error.message : 'Erro desconhecido');
+      const list = await repos.peladas.list();
+      setLocalPeladas(list);
+      setPeladas(list);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao listar peladas');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [repos.peladas, setPeladas]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <View style={styles.header}>
         <Text style={styles.brand}>AppPeladas</Text>
-        <Text style={styles.subtitle}>Fase 1 — scaffold, SQLite e backup JSON</Text>
-        {peladaCount !== null ? (
-          <Text style={styles.meta}>Peladas no banco: {peladaCount}</Text>
-        ) : (
-          <Text style={styles.meta}>Banco ainda não exercitado nesta sessão</Text>
-        )}
-        <Text style={styles.message}>{message}</Text>
-
-        <Pressable
-          style={[styles.button, status === 'loading' && styles.buttonDisabled]}
-          onPress={runSmoke}
-          disabled={status === 'loading'}
-        >
-          {status === 'loading' ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Rodar smoke no device</Text>
-          )}
-        </Pressable>
-
-        {status === 'ok' ? <Text style={styles.ok}>✓ Banco e backup funcionando</Text> : null}
-        {status === 'error' ? <Text style={styles.error}>Falhou — veja a mensagem</Text> : null}
+        <Text style={styles.subtitle}>Suas peladas neste aparelho</Text>
       </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Text style={styles.error}>{error}</Text>
+          <Pressable onPress={load}>
+            <Text style={styles.retry}>Tentar de novo</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={peladas}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={peladas.length === 0 ? styles.emptyContainer : styles.list}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>Nenhuma pelada ainda</Text>
+              <Text style={styles.emptyBody}>Toque no + para cadastrar a primeira.</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.nome}>{item.nome}</Text>
+                {item.descricao ? (
+                  <Text style={styles.descricao} numberOfLines={2}>
+                    {item.descricao}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                style={styles.entrar}
+                onPress={() => router.push(`/pelada/${item.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Entrar em ${item.nome}`}
+              >
+                <Text style={styles.entrarText}>Entrar</Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
+
+      <Fab accessibilityLabel="Nova pelada" onPress={() => router.push('/pelada/nova')} />
     </SafeAreaView>
   );
 }
@@ -123,57 +97,95 @@ export default function HomePlaceholder() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#f3f6f2',
+    backgroundColor: colors.bg,
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    gap: 12,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 4,
   },
   brand: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#1b4332',
+    color: colors.brand,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#2d6a4f',
-  },
-  meta: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#40916c',
-  },
-  message: {
     fontSize: 15,
-    color: '#1b1b1b',
-    lineHeight: 22,
+    color: colors.brandMuted,
   },
-  button: {
-    marginTop: 16,
-    backgroundColor: '#1b4332',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 10,
+  list: {
+    paddingHorizontal: 16,
+    paddingBottom: 96,
+    gap: 10,
+  },
+  emptyContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  empty: {
     alignItems: 'center',
+    gap: 8,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.brand,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  emptyBody: {
+    fontSize: 15,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
-  ok: {
-    marginTop: 8,
-    color: '#2d6a4f',
-    fontWeight: '600',
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  rowText: {
+    flex: 1,
+    gap: 4,
+  },
+  nome: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  descricao: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
+  entrar: {
+    backgroundColor: colors.brand,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  entrarText: {
+    color: colors.onBrand,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   error: {
-    marginTop: 8,
-    color: '#9b2226',
+    color: colors.danger,
     fontWeight: '600',
+  },
+  retry: {
+    color: colors.brand,
+    fontWeight: '700',
   },
 });

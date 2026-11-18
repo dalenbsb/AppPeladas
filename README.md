@@ -4,9 +4,9 @@ App offline para organizar peladas (futebol amador): atletas, fila, partida ao v
 
 **Stack:** Expo (React Native) + TypeScript + Expo Router + `expo-sqlite`.
 
-## Fase 1 (atual)
+## Fase 2 (atual)
 
-Scaffold, modelo de dados, migrations SQLite, repositórios CRUD e backup JSON (`exportToJson` / `importFromJson`).
+Home com lista de peladas, cadastro/edição de parâmetros, Hub (Atletas / Jogos / Estatísticas / Configurações) e backup JSON nas Configurações. Atletas/Jogos/Estatísticas ainda são placeholders (Fases 3+).
 
 ### Rodar o app
 
@@ -24,19 +24,22 @@ Usa `node:sqlite` (Node >= 22.13) — sem compilação nativa:
 npm run smoke
 ```
 
-### Lint / format
+### Lint / types
 
 ```bash
 npm run lint
+npx tsc --noEmit
 npm run format
 ```
 
 ## Estrutura
 
 ```
-app/                 # Expo Router (UI mínima na Fase 1)
-src/db/              # SQLite, migrations, repositórios
-src/domain/          # Tipos + validação do backup
-src/features/backup/ # export/import JSON
-src/components/      # Componentes compartilhados
+app/                      # Expo Router (Home, pelada, Hub)
+src/db/                   # SQLite, migrations, repositórios, DatabaseProvider
+src/domain/               # Tipos + validação do backup
+src/features/peladas/     # Formulário e store de peladas
+src/features/backup/      # export/import JSON + painel de UI
+src/components/           # FAB, checkbox, radio, selects
+src/theme/                # Cores
 ```
