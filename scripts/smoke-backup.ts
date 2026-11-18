@@ -1,10 +1,11 @@
 /**
  * Smoke Fase 1: pelada fake → export → wipe → import → match.
- * Roda em Node com better-sqlite3 (mesmo schema/repos do app).
+ * Roda em Node com `node:sqlite` (mesmo schema/repos do app; sem native build).
  *
  * Uso: npm run smoke
+ * Requer Node >= 22.13 (módulo node:sqlite).
  */
-import { createBetterSqliteExecutor } from '../src/db/betterSqliteAdapter';
+import { createNodeSqliteExecutor } from '../src/db/nodeSqliteAdapter';
 import { migrate } from '../src/db/migrate';
 import { createRepositories } from '../src/db/repositories';
 import {
@@ -26,7 +27,7 @@ function stablePayload(backup: BackupJsonV1) {
 }
 
 async function main() {
-  const db = createBetterSqliteExecutor(':memory:');
+  const db = createNodeSqliteExecutor(':memory:');
   await migrate(db);
   const repos = createRepositories(db);
 

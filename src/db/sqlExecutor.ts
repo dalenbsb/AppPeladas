@@ -1,6 +1,6 @@
 /**
  * Abstração mínima de SQLite para rodar no app (expo-sqlite)
- * e no smoke test Node (better-sqlite3).
+ * e no smoke test Node (`node:sqlite`).
  */
 export interface SqlExecutor {
   exec(sql: string): Promise<void>;

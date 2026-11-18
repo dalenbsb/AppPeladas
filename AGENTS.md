@@ -19,7 +19,7 @@ npx tsc --noEmit
 ## Dados
 
 - Persistência: `expo-sqlite` via `SqlExecutor` (`src/db/sqlExecutor.ts`)
-- Smoke Node: `better-sqlite3` em `src/db/betterSqliteAdapter.ts` (não importar no bundle do app)
+- Smoke Node: `node:sqlite` em `src/db/nodeSqliteAdapter.ts` (não importar no bundle do app; Node >= 22.13)
 - Backup v1: `src/features/backup/backupService.ts` — import **substitui** tudo após validar schema e `confirmReplace: true`
 
 ## Fora do escopo da Fase 1

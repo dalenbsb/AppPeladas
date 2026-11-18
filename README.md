@@ -17,7 +17,8 @@ npx expo start
 
 ### Smoke test (backup round-trip)
 
-Grava pelada fake → exporta → limpa → importa → confere igualdade (exceto `exportedAt`):
+Grava pelada fake → exporta → limpa → importa → confere igualdade (exceto `exportedAt`).
+Usa `node:sqlite` (Node >= 22.13) — sem compilação nativa:
 
 ```bash
 npm run smoke
