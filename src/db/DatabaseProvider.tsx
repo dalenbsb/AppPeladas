@@ -14,17 +14,17 @@ type DatabaseContextValue = {
 
 const DatabaseContext = createContext<DatabaseContextValue | null>(null);
 
+const WEB_UNSUPPORTED =
+  'AppPeladas v1 é para iOS/Android (Expo Go ou emulador). O SQLite nativo não roda no navegador.';
+
 export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<DatabaseContextValue | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    Platform.OS === 'web' ? WEB_UNSUPPORTED : null,
+  );
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      setError(
-        'AppPeladas v1 é para iOS/Android (Expo Go ou emulador). O SQLite nativo não roda no navegador.',
-      );
-      return;
-    }
+    if (Platform.OS === 'web') return;
 
     let cancelled = false;
     (async () => {
