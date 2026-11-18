@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 
@@ -19,6 +19,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      setError(
+        'AppPeladas v1 é para iOS/Android (Expo Go ou emulador). O SQLite nativo não roda no navegador.',
+      );
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -40,6 +47,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       <View style={styles.center}>
         <Text style={styles.errorTitle}>Não foi possível iniciar</Text>
         <Text style={styles.errorBody}>{error}</Text>
+        {Platform.OS === 'web' ? (
+          <Text style={styles.hint}>
+            No terminal: npm start e depois pressione a (Android) ou i (iOS), ou use{'\n'}
+            npx expo start --android
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -90,5 +103,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  hint: {
+    marginTop: 8,
+    color: colors.brandMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontSize: 14,
   },
 });
