@@ -8,9 +8,7 @@ export class PeladaRepository {
   constructor(private readonly db: SqlExecutor) {}
 
   async list(): Promise<Pelada[]> {
-    const rows = await this.db.getAll<PeladaRow>(
-      'SELECT * FROM peladas ORDER BY created_at ASC',
-    );
+    const rows = await this.db.getAll<PeladaRow>('SELECT * FROM peladas ORDER BY created_at ASC');
     return rows.map(mapPelada);
   }
 

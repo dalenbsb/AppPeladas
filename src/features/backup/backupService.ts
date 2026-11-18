@@ -1,9 +1,5 @@
 import { validateBackupJson } from '@/domain/backupValidation';
-import {
-  BACKUP_JSON_VERSION,
-  type BackupJsonV1,
-  type BackupMediaItem,
-} from '@/domain/types';
+import { BACKUP_JSON_VERSION, type BackupJsonV1, type BackupMediaItem } from '@/domain/types';
 
 import { createRepositories } from '@/db/repositories';
 import type { SqlExecutor } from '@/db/sqlExecutor';
