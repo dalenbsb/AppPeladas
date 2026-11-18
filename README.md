@@ -4,9 +4,9 @@ App offline para organizar peladas (futebol amador): atletas, fila, partida ao v
 
 **Stack:** Expo (React Native) + TypeScript + Expo Router + `expo-sqlite`.
 
-## Fase 2 (atual)
+## Fase 3 (atual)
 
-Home com lista de peladas, cadastro/edição de parâmetros, Hub (Atletas / Jogos / Estatísticas / Configurações) e backup JSON nas Configurações. Atletas/Jogos/Estatísticas ainda são placeholders (Fases 3+).
+CRUD de atletas por pelada: lista + FAB, formulário (foto via `expo-image-picker`, nome, posição, celular, nascimento, ativo, mensalista, camisa, melhor pé), editar e excluir com confirmação. Hub → Atletas já leva à lista. Jogos/Estatísticas seguem como placeholders (Fases 4+).
 
 ### Rodar o app
 
@@ -35,10 +35,11 @@ npm run format
 ## Estrutura
 
 ```
-app/                      # Expo Router (Home, pelada, Hub)
+app/                      # Expo Router (Home, pelada, Hub, atletas)
 src/db/                   # SQLite, migrations, repositórios, DatabaseProvider
 src/domain/               # Tipos + validação do backup
 src/features/peladas/     # Formulário e store de peladas
+src/features/atletas/     # Formulário e labels de atletas
 src/features/backup/      # export/import JSON + painel de UI
 src/components/           # FAB, checkbox, radio, selects
 src/theme/                # Cores
