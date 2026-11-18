@@ -25,6 +25,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
+    "react-native-draggable-flatlist": "^4.0.3",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.11.1",
@@ -53,6 +54,7 @@
     "web": "node -e \"console.error('AppPeladas v1 não suporta web. Use: npm run android | npm run ios | npx expo start'); process.exit(1)\"",
     "lint": "expo lint",
     "smoke": "tsx --experimental-sqlite scripts/smoke-backup.ts",
+    "smoke:sorteio": "tsx scripts/smoke-sorteio.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

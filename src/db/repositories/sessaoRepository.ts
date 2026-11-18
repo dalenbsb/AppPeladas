@@ -25,6 +25,30 @@ export class SessaoRepository {
     return row ? mapSessao(row) : null;
   }
 
+  /** Sessão aberta ou em partida mais recente da pelada (se houver). */
+  async getActiveByPelada(peladaId: string): Promise<SessaoJogo | null> {
+    const row = await this.db.getFirst<SessaoRow>(
+      `SELECT * FROM sessoes
+       WHERE pelada_id = ? AND status IN ('aberta', 'em_partida')
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [peladaId],
+    );
+    return row ? mapSessao(row) : null;
+  }
+
+  async getOrCreateOpen(peladaId: string): Promise<SessaoJogo> {
+    const existing = await this.getActiveByPelada(peladaId);
+    if (existing) return existing;
+    return this.create({
+      peladaId,
+      ordemChegada: [],
+      timeBrancoIds: [],
+      timePretoIds: [],
+      status: 'aberta',
+    });
+  }
+
   async create(input: NewSessaoJogo): Promise<SessaoJogo> {
     const id = input.id ?? createId();
     const now = nowIso();
