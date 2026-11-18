@@ -35,7 +35,14 @@
         }
       ],
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O AppPeladas usa suas fotos para a imagem do atleta.",
+          "cameraPermission": "O AppPeladas usa a câmera para fotografar o atleta."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

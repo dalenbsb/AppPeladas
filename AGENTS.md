@@ -24,15 +24,18 @@ npx tsc --noEmit
 - UI de export/import: `src/features/backup/BackupPanel.tsx` (Configurações)
 - Estado de lista: Zustand em `src/features/peladas/peladaStore.ts`
 
-## Navegação (Fase 2)
+## Navegação
 
 - Home (`app/index.tsx`): lista + Entrar + FAB `+`
 - Nova pelada: `app/pelada/nova.tsx`
 - Hub: `app/pelada/[peladaId]/index.tsx` → Atletas / Jogos / Estatísticas / Configurações
-- Formulário compartilhado: `src/features/peladas/PeladaForm.tsx`
+- Formulário de pelada: `src/features/peladas/PeladaForm.tsx`
+- Atletas: `app/pelada/[peladaId]/atletas/` (lista, novo, editar) + `src/features/atletas/AtletaForm.tsx`
+- Fotos de atleta: `expo-image-picker` (câmera/galeria; URI local)
 
 ## Escopo por fase
 
 - Fase 1: scaffold + DB + backup — feito
-- Fase 2: Home + cadastro/edição + Hub + Config — atual
-- Fase 3+: atletas / partida / stats (placeholders no Hub)
+- Fase 2: Home + cadastro/edição + Hub + Config — feito
+- Fase 3: Atletas (CRUD + foto) — atual
+- Fase 4+: partida / fila / stats (placeholders no Hub)
