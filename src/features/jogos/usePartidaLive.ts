@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 import { useRepositories } from '@/db/DatabaseProvider';
+import { coresIguais } from '@/domain/teamColors';
 import type { MotivoFimPartida, TimeSide } from '@/domain/types';
 import { nowIso } from '@/db/ids';
 
@@ -72,6 +73,7 @@ export function usePartidaLive() {
   const repos = useRepositories();
   const pelada = useJogosStore((s) => s.pelada);
   const sessao = useJogosStore((s) => s.sessao);
+  const setPelada = useJogosStore((s) => s.setPelada);
   const setSessao = useJogosStore((s) => s.setSessao);
 
   const partida = usePartidaLiveStore((s) => s.partida);
@@ -755,6 +757,34 @@ export function usePartidaLive() {
     return encerrarPartida('manual');
   }, [encerrarPartida]);
 
+  /**
+   * Troca a cor da camisa de um time (pelada + partida aberta).
+   * Placar/histórico/sessão leem as mesmas cores persistidas.
+   */
+  const atualizarCorTime = useCallback(
+    async (lado: TimeSide, cor: string) => {
+      const pel = useJogosStore.getState().pelada;
+      if (!pel) throw new Error('Pelada não carregada.');
+
+      const outra = lado === 'branco' ? pel.corTime2 : pel.corTime1;
+      if (coresIguais(cor, outra)) {
+        throw new Error('Time 1 e Time 2 não podem ter a mesma cor de camisa.');
+      }
+
+      const patch =
+        lado === 'branco' ? { corTime1: cor } : { corTime2: cor };
+      const updatedPelada = await repos.peladas.update(pel.id, patch);
+      setPelada(updatedPelada);
+
+      const p = usePartidaLiveStore.getState().partida;
+      if (p && !p.encerradaEm) {
+        const updatedPartida = await repos.partidas.update(p.id, patch);
+        setPartida(updatedPartida);
+      }
+    },
+    [repos.partidas, repos.peladas, setPartida, setPelada],
+  );
+
   return {
     partida,
     amarelosAtivos,
@@ -772,6 +802,7 @@ export function usePartidaLive() {
     substituirJogador,
     confirmarPreenchimentoVaga,
     encerrarManual,
+    atualizarCorTime,
     tempoAtualMs,
   };
 }

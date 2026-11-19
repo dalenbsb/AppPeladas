@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useLocalSearchParams } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import {
 } from '@/features/jogos/partidaLiveStore';
 import { useJogosBootstrap } from '@/features/jogos/useJogosSession';
 import { colors } from '@/theme/colors';
+
 
 function LivePlacarHeader({
   pelada,
@@ -88,21 +90,45 @@ export default function JogosLayout() {
               name="index"
               options={{
                 title: 'Ordem',
+                tabBarLabel: 'Ordem',
                 tabBarAccessibilityLabel: 'Ordem de chegada',
+                tabBarIcon: ({ focused, size }) => (
+                  <Ionicons
+                    name="list"
+                    size={size}
+                    color={focused ? colors.brand : colors.textMuted}
+                  />
+                ),
               }}
             />
             <Tabs.Screen
               name="partida"
               options={{
                 title: 'Partida',
+                tabBarLabel: 'Partida',
                 tabBarAccessibilityLabel: 'Partida',
+                tabBarIcon: ({ focused, size }) => (
+                  <Ionicons
+                    name="football"
+                    size={size}
+                    color={focused ? colors.brand : colors.textMuted}
+                  />
+                ),
               }}
             />
             <Tabs.Screen
               name="proximos"
               options={{
                 title: 'Próximos',
+                tabBarLabel: 'Próximos',
                 tabBarAccessibilityLabel: 'Próximos times',
+                tabBarIcon: ({ focused, size }) => (
+                  <Ionicons
+                    name="people"
+                    size={size}
+                    color={focused ? colors.brand : colors.textMuted}
+                  />
+                ),
               }}
             />
           </Tabs>
