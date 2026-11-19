@@ -175,12 +175,17 @@ assert(deepEqual(winPreto.timePretoIds, preto), 'preto vence e fica');
 assert(deepEqual(winPreto.timeBrancoIds, ['n1', 'n2', 'n3']), 'próximo vira camisa branco');
 assert(winPreto.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'branco perdedor no fim');
 
-// Substituição: sai b2, entra n1, b2 vai ao fim dos próximos.
+// Substituição: sai b2, n1 entra no fim do time (não no índice vacante); b2 vai ao fim dos próximos.
 const sub = substituirPorProximo(fila, branco, preto, 'b2');
 assert(sub != null, 'substituição possível');
-assert(sub!.timeBrancoIds.includes('n1') && !sub!.timeBrancoIds.includes('b2'), 'n1 no lugar');
+assert(deepEqual(sub!.timeBrancoIds, ['b1', 'b3', 'n1']), 'n1 no fim do time');
 assert(sub!.ordemChegada.at(-1) === 'b2', 'substituído no fim');
 assert(deepEqual(sub!.timePretoIds, preto), 'outro time intacto');
+
+// Remover o primeiro do time: substituto ainda vai para a última posição.
+const subPrimeiro = substituirPorProximo(fila, branco, preto, 'b1');
+assert(subPrimeiro != null, 'substituição do primeiro possível');
+assert(deepEqual(subPrimeiro!.timeBrancoIds, ['b2', 'b3', 'n1']), 'n1 no fim após sair o 1º');
 assert(substituirPorProximo(branco.concat(preto), branco, preto, 'b1') == null, 'sem próximos');
 
 // Reordenar próximos preserva times em campo.

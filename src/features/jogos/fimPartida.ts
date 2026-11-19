@@ -249,7 +249,8 @@ export function enviarAoFimDaFila(
 
 /**
  * Troca um atleta em campo pelo próximo da fila de espera.
- * O que sai vai para o fim dos próximos; o times em campo (lados) permanecem.
+ * Quem sai vai para o fim dos próximos; quem entra vai ao **fim** do time
+ * (não ocupa o índice vacante). O outro lado permanece intacto.
  */
 export function substituirPorProximo(
   ordemChegada: string[],
@@ -269,9 +270,13 @@ export function substituirPorProximo(
   const entrouId = waiting[0];
   if (!entrouId) return null;
 
-  const swap = (ids: string[]) => ids.map((id) => (id === atletaId ? entrouId : id));
-  const novoBranco = swap(timeBrancoIds);
-  const novoPreto = swap(timePretoIds);
+  /** Remove quem sai e anexa o substituto no fim do elenco do time. */
+  const appendSub = (ids: string[]) => {
+    if (!ids.includes(atletaId)) return ids;
+    return [...ids.filter((id) => id !== atletaId), entrouId];
+  };
+  const novoBranco = appendSub(timeBrancoIds);
+  const novoPreto = appendSub(timePretoIds);
   const novaEspera = [...waiting.slice(1), atletaId];
   return {
     ordemChegada: remontarOrdemAposRotacao(novoBranco, novoPreto, novaEspera),
