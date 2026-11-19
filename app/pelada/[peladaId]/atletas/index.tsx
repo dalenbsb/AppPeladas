@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
 import { Fab } from '@/components/Fab';
 import { useRepositories } from '@/db/DatabaseProvider';
 import type { Atleta } from '@/domain/types';
@@ -63,10 +64,10 @@ export default function AtletasListScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={atletas.length === 0 ? styles.emptyContainer : styles.list}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Nenhum atleta ainda</Text>
-              <Text style={styles.emptyBody}>Toque no + para incluir o primeiro peladeiro.</Text>
-            </View>
+            <EmptyState
+              title="Nenhum atleta ainda"
+              body="Toque no + para incluir o primeiro peladeiro desta pelada."
+            />
           }
           renderItem={({ item }) => (
             <Pressable
@@ -121,20 +122,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-  },
-  empty: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.brand,
-  },
-  emptyBody: {
-    fontSize: 15,
-    color: colors.textMuted,
-    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',

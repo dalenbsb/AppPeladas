@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { EmptyState } from '@/components/EmptyState';
 import type { Atleta } from '@/domain/types';
 import { AtletaFilaRow } from '@/features/jogos/AtletaFilaRow';
 import { montarProximosDaFila } from '@/features/jogos/montarTimes';
@@ -25,10 +26,10 @@ export default function ProximosTimesScreen() {
 
       {blocos.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Nenhum time na fila</Text>
-          <Text style={styles.emptyBody}>
-            Adicione mais peladeiros na ordem de chegada para formar os próximos times.
-          </Text>
+          <EmptyState
+            title="Nenhum time na fila"
+            body="Adicione mais peladeiros na ordem de chegada para formar os próximos times."
+          />
         </View>
       ) : (
         blocos.map((ids, blocoIndex) => (
@@ -79,20 +80,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     marginTop: 32,
-    alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 12,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.brand,
-  },
-  emptyBody: {
-    fontSize: 14,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   bloco: {
     marginTop: 8,

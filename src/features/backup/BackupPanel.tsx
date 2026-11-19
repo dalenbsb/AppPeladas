@@ -9,20 +9,26 @@ import { usePeladaStore } from '@/features/peladas/peladaStore';
 import { colors } from '@/theme/colors';
 
 import { exportToJson, importFromJson } from './backupService';
+import { formatBackupError } from './formatBackupError';
 
 type BackupPanelProps = {
   onImported?: () => void;
+};
+
+type Feedback = {
+  kind: 'ok' | 'error';
+  text: string;
 };
 
 export function BackupPanel({ onImported }: BackupPanelProps) {
   const { db } = useDatabase();
   const bump = usePeladaStore((s) => s.bump);
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const handleExport = async () => {
     setBusy('export');
-    setMessage(null);
+    setFeedback(null);
     try {
       const backup = await exportToJson(db);
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -35,7 +41,10 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        setMessage(`Backup gerado em: ${file.uri}`);
+        setFeedback({
+          kind: 'ok',
+          text: `Backup gerado neste aparelho:\n${file.uri}`,
+        });
         return;
       }
       await Sharing.shareAsync(file.uri, {
@@ -43,9 +52,9 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
         dialogTitle: 'Exportar dados AppPeladas',
         UTI: 'public.json',
       });
-      setMessage('Exportação concluída.');
+      setFeedback({ kind: 'ok', text: 'Exportação concluída. O arquivo ficou só onde você salvou.' });
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Falha ao exportar.');
+      setFeedback({ kind: 'error', text: formatBackupError(err) });
     } finally {
       setBusy(null);
     }
@@ -53,14 +62,14 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
 
   const runImport = async (raw: unknown) => {
     setBusy('import');
-    setMessage(null);
+    setFeedback(null);
     try {
       await importFromJson(db, raw, { confirmReplace: true });
       bump();
-      setMessage('Importação concluída. Dados substituídos.');
+      setFeedback({ kind: 'ok', text: 'Importação concluída. Todos os dados anteriores foram substituídos.' });
       onImported?.();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Falha ao importar.');
+      setFeedback({ kind: 'error', text: formatBackupError(err) });
     } finally {
       setBusy(null);
     }
@@ -83,18 +92,18 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
-      } catch {
-        setMessage('Arquivo JSON inválido.');
+      } catch (err) {
+        setFeedback({ kind: 'error', text: formatBackupError(err) });
         return;
       }
 
       Alert.alert(
         'Substituir todos os dados?',
-        'Isso substitui todos os dados atuais pelo conteúdo do arquivo. Esta ação não pode ser desfeita.',
+        'Isso apaga peladas, atletas, partidas e estatísticas atuais e coloca o conteúdo do arquivo. Não dá para desfazer.',
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Substituir',
+            text: 'Substituir tudo',
             style: 'destructive',
             onPress: () => {
               void runImport(parsed);
@@ -103,21 +112,28 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
         ],
       );
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Falha ao escolher arquivo.');
+      setFeedback({ kind: 'error', text: formatBackupError(err) });
     }
   };
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Backup JSON</Text>
+      <Text style={styles.title}>Backup e portabilidade</Text>
       <Text style={styles.hint}>
-        Exporte ou importe todos os dados do app. A importação substitui tudo após confirmação.
+        Exporte ou importe o JSON completo do app. A importação substitui tudo após confirmação. Em
+        caso de arquivo inválido, nada é alterado.
+      </Text>
+      <Text style={styles.privacy}>
+        Privacidade: os dados ficam só neste aparelho. O backup não sobe para a nuvem sozinho — só
+        vai para onde você salvar ou compartilhar.
       </Text>
 
       <Pressable
         style={[styles.button, styles.secondary, busy && styles.disabled]}
         onPress={handleExport}
         disabled={busy != null}
+        accessibilityRole="button"
+        accessibilityLabel="Exportar dados em JSON"
       >
         {busy === 'export' ? (
           <ActivityIndicator color={colors.brand} />
@@ -130,6 +146,8 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
         style={[styles.button, styles.danger, busy && styles.disabled]}
         onPress={handleImport}
         disabled={busy != null}
+        accessibilityRole="button"
+        accessibilityLabel="Importar dados de JSON"
       >
         {busy === 'import' ? (
           <ActivityIndicator color={colors.onBrand} />
@@ -138,7 +156,14 @@ export function BackupPanel({ onImported }: BackupPanelProps) {
         )}
       </Pressable>
 
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {feedback ? (
+        <Text
+          style={[styles.message, feedback.kind === 'error' ? styles.messageError : styles.messageOk]}
+          accessibilityLiveRegion="polite"
+        >
+          {feedback.text}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -160,6 +185,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
     lineHeight: 18,
+  },
+  privacy: {
+    fontSize: 13,
+    color: colors.brandMuted,
+    lineHeight: 18,
+    backgroundColor: colors.chip,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     marginBottom: 4,
   },
   button: {
@@ -191,7 +225,13 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 4,
     fontSize: 14,
-    color: colors.text,
     lineHeight: 20,
+  },
+  messageOk: {
+    color: colors.brandMuted,
+  },
+  messageError: {
+    color: colors.danger,
+    fontWeight: '600',
   },
 });

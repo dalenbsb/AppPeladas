@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
 import { Fab } from '@/components/Fab';
 import { useRepositories } from '@/db/DatabaseProvider';
 import type { Pelada } from '@/domain/types';
@@ -61,10 +62,10 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={peladas.length === 0 ? styles.emptyContainer : styles.list}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Nenhuma pelada ainda</Text>
-              <Text style={styles.emptyBody}>Toque no + para cadastrar a primeira.</Text>
-            </View>
+            <EmptyState
+              title="Nenhuma pelada ainda"
+              body="Toque no + para cadastrar a primeira. Backup e importação ficam em Configurações, dentro de cada pelada."
+            />
           }
           renderItem={({ item }) => (
             <View style={styles.row}>
@@ -123,20 +124,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-  },
-  empty: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.brand,
-  },
-  emptyBody: {
-    fontSize: 15,
-    color: colors.textMuted,
-    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
