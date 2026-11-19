@@ -51,11 +51,13 @@ export const usePartidaLiveStore = create<PartidaLiveState>((set) => ({
   reset: () => set({ ...initial, nowMs: Date.now() }),
 }));
 
-export function selectPlacar(state: PartidaLiveState) {
-  return {
-    placarBranco: state.partida?.placarBranco ?? 0,
-    placarPreto: state.partida?.placarPreto ?? 0,
-  };
+/** Primitivos — nunca retornar objeto novo no seletor (quebra useSyncExternalStore). */
+export function selectPlacarBranco(state: PartidaLiveState): number {
+  return state.partida?.placarBranco ?? 0;
+}
+
+export function selectPlacarPreto(state: PartidaLiveState): number {
+  return state.partida?.placarPreto ?? 0;
 }
 
 export function selectCronometroLabel(state: PartidaLiveState): string {
