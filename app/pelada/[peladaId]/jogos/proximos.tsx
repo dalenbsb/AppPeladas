@@ -14,7 +14,11 @@ export default function ProximosTimesScreen() {
 
   const blocos = useMemo(() => {
     if (!sessao) return [] as string[][];
-    return montarProximosDaFila(sessao.ordemChegada, n, true);
+    const emCampo =
+      sessao.timeBrancoIds.length > 0 || sessao.timePretoIds.length > 0
+        ? [...sessao.timeBrancoIds, ...sessao.timePretoIds]
+        : true;
+    return montarProximosDaFila(sessao.ordemChegada, n, emCampo);
   }, [n, sessao]);
 
   return (
