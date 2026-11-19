@@ -5,9 +5,11 @@
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  reordenarProximos,
   remontarOrdemAposRotacao,
   rotacionarSaiOsDois,
   rotacionarVencedorFica,
+  substituirPorProximo,
   ultimoVencedorDoCiclo,
   vencedorDaPartida,
 } from '../src/features/jogos/fimPartida';
@@ -166,5 +168,25 @@ const fimAposReload = aplicarFimPartida({
 });
 assert(deepEqual(fimAposReload.timePretoIds, preto), 'reload: preto mantém vantagem');
 assert(fimAposReload.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'reload: branco sai');
+
+// Vitória camisa preta: preto fica; próximo entra como branco; perdedor no fim.
+const winPreto = rotacionarVencedorFica(fila, branco, preto, 'preto', 3);
+assert(deepEqual(winPreto.timePretoIds, preto), 'preto vence e fica');
+assert(deepEqual(winPreto.timeBrancoIds, ['n1', 'n2', 'n3']), 'próximo vira camisa branco');
+assert(winPreto.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'branco perdedor no fim');
+
+// Substituição: sai b2, entra n1, b2 vai ao fim dos próximos.
+const sub = substituirPorProximo(fila, branco, preto, 'b2');
+assert(sub != null, 'substituição possível');
+assert(sub!.timeBrancoIds.includes('n1') && !sub!.timeBrancoIds.includes('b2'), 'n1 no lugar');
+assert(sub!.ordemChegada.at(-1) === 'b2', 'substituído no fim');
+assert(deepEqual(sub!.timePretoIds, preto), 'outro time intacto');
+assert(substituirPorProximo(branco.concat(preto), branco, preto, 'b1') == null, 'sem próximos');
+
+// Reordenar próximos preserva times em campo.
+const reord = reordenarProximos(branco, preto, ['n3', 'n1', 'n2', 'n6', 'n5', 'n4']);
+assert(deepEqual(reord.timeBrancoIds, branco), 'reorden: branco intacto');
+assert(deepEqual(reord.timePretoIds, preto), 'reorden: preto intacto');
+assert(reord.ordemChegada.slice(6).join(',') === 'n3,n1,n2,n6,n5,n4', 'reorden: fila');
 
 console.log('smoke-partida: ok');

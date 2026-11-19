@@ -1,5 +1,10 @@
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from 'react-native-draggable-flatlist';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { EmptyState } from '@/components/EmptyState';
 import type { Atleta } from '@/domain/types';
@@ -9,55 +14,81 @@ import { useJogosSession } from '@/features/jogos/useJogosSession';
 import { colors } from '@/theme/colors';
 
 export default function ProximosTimesScreen() {
-  const { pelada, sessao, atletasById } = useJogosSession();
+  const { pelada, sessao, atletasById, persistProximos } = useJogosSession();
   const n = pelada?.jogadoresPorEquipe ?? 5;
 
-  const blocos = useMemo(() => {
-    if (!sessao) return [] as string[][];
+  const emCampoIds = useMemo(() => {
+    if (!sessao) return [] as string[];
+    if (sessao.timeBrancoIds.length > 0 || sessao.timePretoIds.length > 0) {
+      return [...sessao.timeBrancoIds, ...sessao.timePretoIds];
+    }
+    return [];
+  }, [sessao]);
+
+  const filaProximos = useMemo(() => {
+    if (!sessao) return [] as Atleta[];
     const emCampo =
-      sessao.timeBrancoIds.length > 0 || sessao.timePretoIds.length > 0
-        ? [...sessao.timeBrancoIds, ...sessao.timePretoIds]
-        : true;
-    return montarProximosDaFila(sessao.ordemChegada, n, emCampo);
-  }, [n, sessao]);
+      emCampoIds.length > 0 ? emCampoIds : true;
+    const ids = montarProximosDaFila(sessao.ordemChegada, n, emCampo).flat();
+    return ids
+      .map((id) => atletasById[id])
+      .filter((a): a is Atleta => Boolean(a));
+  }, [atletasById, emCampoIds, n, sessao]);
+
+  const onDragEnd = useCallback(
+    ({ data }: { data: Atleta[] }) => {
+      void persistProximos(data.map((a) => a.id));
+    },
+    [persistProximos],
+  );
+
+  const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Atleta>) => {
+    const index = getIndex() ?? 0;
+    const bloco = Math.floor(index / n) + 1;
+    const posNoBloco = (index % n) + 1;
+    return (
+      <ScaleDecorator>
+        <Pressable
+          onLongPress={drag}
+          disabled={isActive}
+          style={{ opacity: isActive ? 0.92 : 1 }}
+        >
+          <AtletaFilaRow
+            atleta={item}
+            index={index}
+            dragHandle
+            badge={`Próximo ${bloco} · vaga ${posNoBloco}`}
+          />
+        </Pressable>
+      </ScaleDecorator>
+    );
+  }, [n]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
       <Text style={styles.title}>Próximos times</Text>
       <Text style={styles.body}>
-        Montados a partir da ordem de chegada, em blocos de {n} (após os dois times em campo).
+        Montados a partir da ordem de chegada, em blocos de {n}. Segure e arraste para
+        reordenar a fila (os times em campo não mudam).
       </Text>
 
-      {blocos.length === 0 ? (
-        <View style={styles.empty}>
+      <DraggableFlatList
+        data={filaProximos}
+        keyExtractor={(item) => item.id}
+        onDragEnd={onDragEnd}
+        containerStyle={styles.flex}
+        contentContainerStyle={
+          filaProximos.length === 0 ? styles.emptyContainer : styles.list
+        }
+        ListEmptyComponent={
           <EmptyState
             title="Nenhum time na fila"
             body="Adicione mais peladeiros na ordem de chegada para formar os próximos times."
           />
-        </View>
-      ) : (
-        blocos.map((ids, blocoIndex) => (
-          <View key={`bloco-${blocoIndex}`} style={styles.bloco}>
-            <Text style={styles.blocoTitle}>Próximo {blocoIndex + 1}</Text>
-            <Text style={styles.blocoMeta}>
-              {ids.length}/{n} jogadores
-            </Text>
-            {ids.map((id) => {
-              const atleta = atletasById[id] as Atleta | undefined;
-              if (!atleta) return null;
-              return <AtletaFilaRow key={id} atleta={atleta} />;
-            })}
-            {ids.length < n
-              ? Array.from({ length: n - ids.length }, (_, i) => (
-                  <View key={`vaga-${blocoIndex}-${i}`} style={styles.vaga}>
-                    <Text style={styles.vagaText}>Vaga</Text>
-                  </View>
-                ))
-              : null}
-          </View>
-        ))
-      )}
-    </ScrollView>
+        }
+        renderItem={renderItem}
+      />
+    </View>
   );
 }
 
@@ -66,52 +97,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 8,
+  flex: {
+    flex: 1,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.brand,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   body: {
     fontSize: 14,
     color: colors.textMuted,
     lineHeight: 20,
-    marginBottom: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
   },
-  empty: {
-    marginTop: 32,
-    paddingHorizontal: 12,
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
-  bloco: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  blocoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.brand,
-  },
-  blocoMeta: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 6,
-  },
-  vaga: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 8,
-    backgroundColor: colors.surface,
-  },
-  vagaText: {
-    color: colors.textMuted,
-    fontSize: 13,
+  emptyContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
   },
 });
