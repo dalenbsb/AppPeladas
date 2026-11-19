@@ -18,6 +18,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ title: 'AppPeladas' }} />
+        <Stack.Screen name="sobre" options={{ title: 'Sobre' }} />
         <Stack.Screen name="pelada/nova" options={{ title: 'Nova pelada' }} />
         <Stack.Screen name="pelada/[peladaId]" options={{ headerShown: false }} />
       </Stack>

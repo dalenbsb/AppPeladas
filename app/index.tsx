@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +10,9 @@ import { useRepositories } from '@/db/DatabaseProvider';
 import type { Pelada } from '@/domain/types';
 import { usePeladaStore } from '@/features/peladas/peladaStore';
 import { colors } from '@/theme/colors';
+
+const APP_VERSION =
+  Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '—';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -89,6 +93,18 @@ export default function HomeScreen() {
           )}
         />
       )}
+
+      <View style={styles.footer}>
+        <Text style={styles.footerVersion}>v{APP_VERSION}</Text>
+        <Pressable
+          onPress={() => router.push('/sobre')}
+          accessibilityRole="button"
+          accessibilityLabel="Sobre"
+          style={({ pressed }) => [styles.sobreBtn, pressed && styles.sobrePressed]}
+        >
+          <Text style={styles.sobreText}>Sobre</Text>
+        </Pressable>
+      </View>
 
       <Fab accessibilityLabel="Nova pelada" onPress={() => router.push('/pelada/nova')} />
     </SafeAreaView>
@@ -174,5 +190,37 @@ const styles = StyleSheet.create({
   retry: {
     color: colors.brand,
     fontWeight: '700',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingRight: 88,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  footerVersion: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  sobreBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  sobrePressed: {
+    opacity: 0.85,
+  },
+  sobreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.brand,
   },
 });
