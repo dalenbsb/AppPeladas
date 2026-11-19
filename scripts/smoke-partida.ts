@@ -8,6 +8,7 @@ import {
   remontarOrdemAposRotacao,
   rotacionarSaiOsDois,
   rotacionarVencedorFica,
+  ultimoVencedorDoCiclo,
   vencedorDaPartida,
 } from '../src/features/jogos/fimPartida';
 import {
@@ -136,5 +137,34 @@ assert(moved.ordemChegada.at(-1) === 'b2', 'vermelho no fim');
 
 assert(vencedorDaPartida(3, 1) === 'branco', 'vencedor helper');
 assert(vencedorDaPartida(1, 1) === null, 'empate helper');
+
+// Reload após empate: ciclo deve olhar a última vitória, não o empate.
+assert(
+  ultimoVencedorDoCiclo([
+    { placarBranco: 0, placarPreto: 0 },
+    { placarBranco: 1, placarPreto: 2 },
+    { placarBranco: 3, placarPreto: 0 },
+  ]) === 'preto',
+  'ciclo ignora empate e pega preto',
+);
+assert(
+  ultimoVencedorDoCiclo([{ placarBranco: 1, placarPreto: 1 }]) === null,
+  'ciclo vazio só com empates',
+);
+const fimAposReload = aplicarFimPartida({
+  ordemChegada: fila,
+  timeBrancoIds: branco,
+  timePretoIds: preto,
+  placarBranco: 0,
+  placarPreto: 0,
+  regraEmpate: 'fica_quem_esta_ganhando',
+  jogadoresPorEquipe: 3,
+  ultimoVencedor: ultimoVencedorDoCiclo([
+    { placarBranco: 0, placarPreto: 0 },
+    { placarBranco: 0, placarPreto: 1 },
+  ]),
+});
+assert(deepEqual(fimAposReload.timePretoIds, preto), 'reload: preto mantém vantagem');
+assert(fimAposReload.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'reload: branco sai');
 
 console.log('smoke-partida: ok');

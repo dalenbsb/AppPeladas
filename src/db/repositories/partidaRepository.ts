@@ -37,11 +37,16 @@ export class PartidaRepository {
     return row ? mapPartida(row) : null;
   }
 
-  /** Última partida encerrada da sessão (para regra “fica quem está ganhando”). */
+  /**
+   * Última partida encerrada com vencedor na sessão (placar diferente).
+   * Usado para restaurar o ciclo de “fica quem está ganhando” — empates
+   * não contam, senão o reload após empate perde a vantagem do ciclo.
+   */
   async getLastFinishedBySessao(sessaoId: string): Promise<Partida | null> {
     const row = await this.db.getFirst<PartidaRow>(
       `SELECT * FROM partidas
        WHERE sessao_id = ? AND encerrada_em IS NOT NULL
+         AND placar_branco != placar_preto
        ORDER BY encerrada_em DESC
        LIMIT 1`,
       [sessaoId],

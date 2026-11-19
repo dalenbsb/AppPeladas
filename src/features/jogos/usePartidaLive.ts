@@ -9,6 +9,7 @@ import { duracaoLimiteMs, tempoExibidoMs } from './cronometro';
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  ultimoVencedorDoCiclo,
   vencedorDaPartida,
 } from './fimPartida';
 import { montarTimesDaFila } from './montarTimes';
@@ -75,15 +76,21 @@ export function usePartidaLive() {
       resetLive();
       return;
     }
-    const [aberta, ultima] = await Promise.all([
+    const [aberta, ultimaComVencedor] = await Promise.all([
       repos.partidas.getOpenBySessao(sessao.id),
       repos.partidas.getLastFinishedBySessao(sessao.id),
     ]);
-    if (ultima) {
-      setUltimoVencedor(vencedorDaPartida(ultima.placarBranco, ultima.placarPreto));
-    } else {
-      setUltimoVencedor(null);
-    }
+    // Ignora empates: a vantagem do ciclo é a última vitória de fato.
+    setUltimoVencedor(
+      ultimaComVencedor
+        ? ultimoVencedorDoCiclo([
+            {
+              placarBranco: ultimaComVencedor.placarBranco,
+              placarPreto: ultimaComVencedor.placarPreto,
+            },
+          ])
+        : null,
+    );
     if (!aberta) {
       setPartida(null);
       setEventos([]);
