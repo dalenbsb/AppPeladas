@@ -66,6 +66,8 @@ export interface Partida {
   sessaoId: string | null;
   placarBranco: number;
   placarPreto: number;
+  /** Tempo acumulado do cronômetro (ms), atualizado ao pausar/encerrar. */
+  tempoDecorridoMs: number;
   iniciadaEm: string | null;
   pausada: boolean;
   encerradaEm: string | null;
@@ -77,8 +79,13 @@ export interface Partida {
 export interface EventoPartidaMeta {
   assistenteId?: string;
   gravidadeVermelho?: 'leve' | 'grave';
+  /** ISO — retorno após amarelo com 2 min fora. */
+  retornaEm?: string;
   observacao?: string;
 }
+
+export type TimeSide = 'branco' | 'preto';
+
 
 export interface EventoPartida {
   id: string;

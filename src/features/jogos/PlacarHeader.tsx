@@ -10,7 +10,7 @@ type Props = {
   cronometro?: string;
 };
 
-/** Cabeçalho permanente da tela Jogos (esqueleto Fase 4; ao vivo na Fase 5). */
+/** Cabeçalho permanente da tela Jogos — placar e cronômetro ao vivo. */
 export function PlacarHeader({
   pelada,
   placarBranco = 0,

@@ -107,6 +107,13 @@ function validatePartida(item: unknown, index: number): Partida {
   assert(isStringOrNull(item.sessaoId), `partidas[${index}].sessaoId inválido`);
   assert(typeof item.placarBranco === 'number', `partidas[${index}].placarBranco inválido`);
   assert(typeof item.placarPreto === 'number', `partidas[${index}].placarPreto inválido`);
+  // Backups da Fase 1–4 podem não ter tempoDecorridoMs.
+  if (item.tempoDecorridoMs !== undefined) {
+    assert(
+      typeof item.tempoDecorridoMs === 'number',
+      `partidas[${index}].tempoDecorridoMs inválido`,
+    );
+  }
   assert(isStringOrNull(item.iniciadaEm), `partidas[${index}].iniciadaEm inválido`);
   assert(isBoolean(item.pausada), `partidas[${index}].pausada inválido`);
   assert(isStringOrNull(item.encerradaEm), `partidas[${index}].encerradaEm inválido`);
@@ -116,7 +123,11 @@ function validatePartida(item: unknown, index: number): Partida {
   );
   assert(isString(item.createdAt), `partidas[${index}].createdAt inválido`);
   assert(isString(item.updatedAt), `partidas[${index}].updatedAt inválido`);
-  return item as unknown as Partida;
+  return {
+    ...(item as unknown as Partida),
+    tempoDecorridoMs:
+      typeof item.tempoDecorridoMs === 'number' ? item.tempoDecorridoMs : 0,
+  };
 }
 
 function validateEvento(item: unknown, index: number): EventoPartida {

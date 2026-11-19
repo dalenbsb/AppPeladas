@@ -8,9 +8,11 @@ type Props = {
   atleta: Atleta;
   index?: number;
   dragHandle?: boolean;
+  /** Texto extra (ex.: contagem do amarelo). */
+  badge?: string;
 };
 
-export function AtletaFilaRow({ atleta, index, dragHandle }: Props) {
+export function AtletaFilaRow({ atleta, index, dragHandle, badge }: Props) {
   return (
     <View style={styles.row}>
       {index != null ? <Text style={styles.index}>{index + 1}</Text> : null}
@@ -32,6 +34,11 @@ export function AtletaFilaRow({ atleta, index, dragHandle }: Props) {
           {atleta.numeroCamisa != null ? ` · #${atleta.numeroCamisa}` : ''}
           {atleta.mensalista ? ' · Mensalista' : ''}
         </Text>
+        {badge ? (
+          <Text style={styles.badge} numberOfLines={1}>
+            {badge}
+          </Text>
+        ) : null}
       </View>
       {dragHandle ? <Text style={styles.handle}>☰</Text> : null}
     </View>
@@ -85,6 +92,12 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 12,
     color: colors.textMuted,
+  },
+  badge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.danger,
+    marginTop: 2,
   },
   handle: {
     fontSize: 18,
