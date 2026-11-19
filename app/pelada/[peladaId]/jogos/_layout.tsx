@@ -8,7 +8,8 @@ import { PartidaLiveProvider } from '@/features/jogos/PartidaLiveContext';
 import { PlacarHeader } from '@/features/jogos/PlacarHeader';
 import {
   selectCronometroLabel,
-  selectPlacar,
+  selectPlacarBranco,
+  selectPlacarPreto,
   usePartidaLiveStore,
 } from '@/features/jogos/partidaLiveStore';
 import { useJogosBootstrap } from '@/features/jogos/useJogosSession';
@@ -19,15 +20,15 @@ function LivePlacarHeader({
 }: {
   pelada: ReturnType<typeof useJogosBootstrap>['pelada'];
 }) {
-  const placar = usePartidaLiveStore(selectPlacar);
+  const placarBranco = usePartidaLiveStore(selectPlacarBranco);
+  const placarPreto = usePartidaLiveStore(selectPlacarPreto);
   const cronometro = usePartidaLiveStore(selectCronometroLabel);
-  usePartidaLiveStore((s) => s.nowMs);
 
   return (
     <PlacarHeader
       pelada={pelada}
-      placarBranco={placar.placarBranco}
-      placarPreto={placar.placarPreto}
+      placarBranco={placarBranco}
+      placarPreto={placarPreto}
       cronometro={cronometro}
     />
   );
