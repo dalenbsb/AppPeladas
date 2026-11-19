@@ -1,10 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import DraggableFlatList, {
-  RenderItemParams,
-  ScaleDecorator,
-} from 'react-native-draggable-flatlist';
-import { Pressable } from 'react-native-gesture-handler';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/EmptyState';
 import type { Atleta } from '@/domain/types';
@@ -13,6 +8,14 @@ import { AtletaFilaRow } from '@/features/jogos/AtletaFilaRow';
 import { FabMenu } from '@/features/jogos/FabMenu';
 import { useJogosSession } from '@/features/jogos/useJogosSession';
 import { colors } from '@/theme/colors';
+
+function moveAtIndex(ids: string[], from: number, to: number): string[] {
+  if (to < 0 || to >= ids.length || from === to) return ids;
+  const next = [...ids];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
 
 export default function OrdemChegadaScreen() {
   const {
@@ -41,11 +44,12 @@ export default function OrdemChegadaScreen() {
     return atletas.filter((a) => a.ativo && !inFila.has(a.id));
   }, [atletas, sessao?.ordemChegada]);
 
-  const onDragEnd = useCallback(
-    ({ data }: { data: Atleta[] }) => {
-      void persistOrdem(data.map((a) => a.id));
+  const move = useCallback(
+    (from: number, to: number) => {
+      const ids = fila.map((a) => a.id);
+      void persistOrdem(moveAtIndex(ids, from, to));
     },
-    [persistOrdem],
+    [fila, persistOrdem],
   );
 
   const onSortear = useCallback(() => {
@@ -81,29 +85,13 @@ export default function OrdemChegadaScreen() {
     void refreshAtletas().finally(() => setAddOpen(true));
   }, [refreshAtletas]);
 
-  const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Atleta>) => {
-    const index = getIndex() ?? 0;
-    return (
-      <ScaleDecorator>
-        <Pressable
-          onLongPress={drag}
-          disabled={isActive}
-          style={{ opacity: isActive ? 0.92 : 1 }}
-        >
-          <AtletaFilaRow atleta={item} index={index} dragHandle />
-        </Pressable>
-      </ScaleDecorator>
-    );
-  }, []);
-
   return (
     <View style={styles.container}>
-      <Text style={styles.hint}>Segure e arraste para reordenar a fila.</Text>
-      <DraggableFlatList
+      <Text style={styles.hint}>Use ↑ ↓ para reordenar a fila.</Text>
+      <FlatList
         data={fila}
         keyExtractor={(item) => item.id}
-        onDragEnd={onDragEnd}
-        containerStyle={styles.flex}
+        style={styles.flex}
         contentContainerStyle={fila.length === 0 ? styles.emptyContainer : styles.list}
         ListEmptyComponent={
           <EmptyState
@@ -111,7 +99,14 @@ export default function OrdemChegadaScreen() {
             body="Toque no + para adicionar peladeiros à ordem de chegada."
           />
         }
-        renderItem={renderItem}
+        renderItem={({ item, index }) => (
+          <AtletaFilaRow
+            atleta={item}
+            index={index}
+            onMoveUp={index > 0 ? () => move(index, index - 1) : undefined}
+            onMoveDown={index < fila.length - 1 ? () => move(index, index + 1) : undefined}
+          />
+        )}
       />
 
       <FabMenu
