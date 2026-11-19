@@ -5,11 +5,14 @@
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  MSG_PREENCHER_VAGA_VENCEDOR,
+  preencherVagaVencedorEMontarAdversario,
   reordenarProximos,
   remontarOrdemAposRotacao,
   rotacionarSaiOsDois,
   rotacionarVencedorFica,
   substituirPorProximo,
+  timeIncompleto,
   ultimoVencedorDoCiclo,
   vencedorDaPartida,
 } from '../src/features/jogos/fimPartida';
@@ -44,6 +47,8 @@ const win = rotacionarVencedorFica(fila, branco, preto, 'branco', 3);
 assert(deepEqual(win.timeBrancoIds, branco), 'vencedor fica');
 assert(deepEqual(win.timePretoIds, ['n1', 'n2', 'n3']), 'proximo time entra');
 assert(win.ordemChegada.slice(-3).join(',') === 'p1,p2,p3', 'perdedor no fim');
+assert(!win.precisaPreencherVaga, 'vencedor completo: sem passo de vaga');
+assert(win.ladoQueFica == null, 'vencedor completo: ladoQueFica nulo');
 
 // Perdedor aparece em "próximos times"; próxima partida remonta pela fila.
 const proximosAposWin = montarProximosDaFila(win.ordemChegada, 3, [
@@ -193,5 +198,125 @@ const reord = reordenarProximos(branco, preto, ['n3', 'n1', 'n2', 'n6', 'n5', 'n
 assert(deepEqual(reord.timeBrancoIds, branco), 'reorden: branco intacto');
 assert(deepEqual(reord.timePretoIds, preto), 'reorden: preto intacto');
 assert(reord.ordemChegada.slice(6).join(',') === 'n3,n1,n2,n6,n5,n4', 'reorden: fila');
+
+// Vencedor incompleto (expulso/machucado): bloqueia adversário até preencher última vaga.
+assert(timeIncompleto(['b1', 'b2'], 3), 'time incompleto helper');
+assert(!timeIncompleto(branco, 3), 'time completo helper');
+
+const brancoCurto = ['b1', 'b2']; // falta 1
+const filaCurto = [...brancoCurto, ...preto, 'n1', 'n2', 'n3', 'n4', 'n5', 'n6'];
+const winCurto = rotacionarVencedorFica(filaCurto, brancoCurto, preto, 'branco', 3);
+assert(winCurto.precisaPreencherVaga, 'vencedor incompleto exige vaga');
+assert(winCurto.ladoQueFica === 'branco', 'lado que fica é branco');
+assert(deepEqual(winCurto.timeBrancoIds, brancoCurto), 'vencedor curto permanece');
+assert(winCurto.timePretoIds.length === 0, 'adversário ainda não montado');
+assert(winCurto.ordemChegada.slice(-3).join(',') === 'p1,p2,p3', 'perdedor no fim antes da vaga');
+assert(
+  deepEqual(winCurto.ordemChegada.slice(2, 8), ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']),
+  'fila de próximos intacta antes da escolha',
+);
+
+const filled = preencherVagaVencedorEMontarAdversario(
+  winCurto.ordemChegada,
+  winCurto.timeBrancoIds,
+  winCurto.timePretoIds,
+  'branco',
+  'n4', // escolhe do meio da lista (não necessariamente o 1º)
+  3,
+);
+assert(filled != null, 'preencher vaga possível');
+assert(!filled!.precisaPreencherVaga, 'após preencher: libera montagem');
+assert(deepEqual(filled!.timeBrancoIds, ['b1', 'b2', 'n4']), 'entra na última vaga');
+assert(deepEqual(filled!.timePretoIds, ['n1', 'n2', 'n3']), 'adversário montado após vaga');
+assert(filled!.ordemChegada.slice(-3).join(',') === 'p1,p2,p3', 'perdedor permanece no fim');
+assert(filled!.timeBrancoIds.at(-1) === 'n4', 'escolhido é a última vaga');
+assert(!filled!.ordemChegada.slice(6).includes('n4'), 'n4 não ficou na espera');
+
+// Escolher quem não está na fila → null.
+assert(
+  preencherVagaVencedorEMontarAdversario(
+    winCurto.ordemChegada,
+    winCurto.timeBrancoIds,
+    winCurto.timePretoIds,
+    'branco',
+    'ghost',
+    3,
+  ) == null,
+  'id fora da fila rejeitado',
+);
+
+// aplicarFimPartida: vitória com time curto usa a copy de substituição.
+const fimCurto = aplicarFimPartida({
+  ordemChegada: filaCurto,
+  timeBrancoIds: brancoCurto,
+  timePretoIds: preto,
+  placarBranco: 2,
+  placarPreto: 0,
+  regraEmpate: 'penaltis',
+  jogadoresPorEquipe: 3,
+  ultimoVencedor: null,
+});
+assert(fimCurto.precisaPreencherVaga, 'aplicarFim: precisa vaga');
+assert(fimCurto.mensagem === MSG_PREENCHER_VAGA_VENCEDOR, 'copy PT-BR de substituição');
+assert(fimCurto.timePretoIds.length === 0, 'aplicarFim: adversário não montado');
+
+// Empate “fica quem está ganhando” com time que fica incompleto.
+const pretoCurto = ['p1', 'p2'];
+const filaEmpateCurto = [...branco, ...pretoCurto, 'n1', 'n2', 'n3', 'n4'];
+const fimEmpateCurto = aplicarFimPartida({
+  ordemChegada: filaEmpateCurto,
+  timeBrancoIds: branco,
+  timePretoIds: pretoCurto,
+  placarBranco: 1,
+  placarPreto: 1,
+  regraEmpate: 'fica_quem_esta_ganhando',
+  jogadoresPorEquipe: 3,
+  ultimoVencedor: 'preto',
+});
+assert(fimEmpateCurto.precisaPreencherVaga, 'empate fica: precisa vaga');
+assert(fimEmpateCurto.ladoQueFica === 'preto', 'empate fica: lado preto');
+assert(deepEqual(fimEmpateCurto.timePretoIds, pretoCurto), 'empate fica: preto curto permanece');
+assert(fimEmpateCurto.timeBrancoIds.length === 0, 'empate fica: adversário não montado');
+assert(fimEmpateCurto.mensagem === MSG_PREENCHER_VAGA_VENCEDOR, 'empate fica: mesma copy');
+
+const filledEmpate = preencherVagaVencedorEMontarAdversario(
+  fimEmpateCurto.ordemChegada,
+  fimEmpateCurto.timeBrancoIds,
+  fimEmpateCurto.timePretoIds,
+  'preto',
+  'n1',
+  3,
+);
+assert(filledEmpate != null, 'empate fica: preencher');
+assert(deepEqual(filledEmpate!.timePretoIds, ['p1', 'p2', 'n1']), 'empate fica: última vaga');
+assert(deepEqual(filledEmpate!.timeBrancoIds, ['n2', 'n3', 'n4']), 'empate fica: adversário entra');
+
+// Sem espera prévia: perdedor vira a lista de próximos — ainda exige escolher quem preenche.
+const winSoPerdedor = rotacionarVencedorFica(
+  [...brancoCurto, ...preto],
+  brancoCurto,
+  preto,
+  'branco',
+  3,
+);
+assert(winSoPerdedor.precisaPreencherVaga, 'só perdedor na fila: ainda exige vaga');
+assert(deepEqual(winSoPerdedor.ordemChegada.slice(2), preto), 'perdedor é a lista de próximos');
+const filledDoPerdedor = preencherVagaVencedorEMontarAdversario(
+  winSoPerdedor.ordemChegada,
+  winSoPerdedor.timeBrancoIds,
+  winSoPerdedor.timePretoIds,
+  'branco',
+  'p2',
+  3,
+);
+assert(filledDoPerdedor != null, 'pode escolher alguém do time que saiu');
+assert(deepEqual(filledDoPerdedor!.timeBrancoIds, ['b1', 'b2', 'p2']), 'última vaga do perdedor');
+assert(filledDoPerdedor!.timePretoIds.length === 0, 'resto do perdedor não forma time completo');
+assert(!filledDoPerdedor!.precisaPreencherVaga, 'time completo: libera (sem adversário ainda)');
+
+// Vencedor incompleto e literalmente ninguém fora de campo (só o próprio time): não bloqueia.
+const winSolo = rotacionarVencedorFica(brancoCurto, brancoCurto, [], 'branco', 3);
+assert(!winSolo.precisaPreencherVaga, 'ninguém na fila: não bloqueia');
+assert(deepEqual(winSolo.timeBrancoIds, brancoCurto), 'vencedor curto permanece sozinho');
 
 console.log('smoke-partida: ok');

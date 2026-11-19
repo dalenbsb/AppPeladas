@@ -9,6 +9,8 @@ import { duracaoLimiteMs, tempoExibidoMs } from './cronometro';
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  MSG_PREENCHER_VAGA_VENCEDOR,
+  preencherVagaVencedorEMontarAdversario,
   substituirPorProximo,
   ultimoVencedorDoCiclo,
   vencedorDaPartida,
@@ -74,10 +76,13 @@ export function usePartidaLive() {
   const ultimoVencedor = usePartidaLiveStore((s) => s.ultimoVencedor);
   const setUltimoVencedor = usePartidaLiveStore((s) => s.setUltimoVencedor);
   const setMensagemFim = usePartidaLiveStore((s) => s.setMensagemFim);
+  const pendentePreencherVaga = usePartidaLiveStore((s) => s.pendentePreencherVaga);
+  const setPendentePreencherVaga = usePartidaLiveStore((s) => s.setPendentePreencherVaga);
   const tick = usePartidaLiveStore((s) => s.tick);
   const resetLive = usePartidaLiveStore((s) => s.reset);
 
   const endingRef = useRef(false);
+  const fillingRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!sessao || !pelada) {
@@ -229,6 +234,15 @@ export function usePartidaLive() {
         setSessao(updatedSessao);
         setMensagemFim(fim.mensagem);
 
+        if (fim.precisaPreencherVaga && fim.ladoQueFica) {
+          setPendentePreencherVaga({
+            ladoQueFica: fim.ladoQueFica,
+            mensagem: MSG_PREENCHER_VAGA_VENCEDOR,
+          });
+        } else {
+          setPendentePreencherVaga(null);
+        }
+
         const v = vencedorDaPartida(encerrada.placarBranco, encerrada.placarPreto);
         if (v) setUltimoVencedor(v);
 
@@ -236,7 +250,11 @@ export function usePartidaLive() {
         setPartida(null);
         setEventos([]);
 
-        return { partida: encerrada, mensagem: fim.mensagem };
+        return {
+          partida: encerrada,
+          mensagem: fim.mensagem,
+          precisaPreencherVaga: fim.precisaPreencherVaga,
+        };
       } finally {
         endingRef.current = false;
       }
@@ -248,11 +266,62 @@ export function usePartidaLive() {
       setEventos,
       setMensagemFim,
       setPartida,
+      setPendentePreencherVaga,
       setSegmentStartedAt,
       setSessao,
       setUltimoVencedor,
       tempoAtualMs,
     ],
+  );
+
+  /**
+   * Pós-partida: escolhe quem da lista de próximos preenche a última vaga do time que ficou.
+   * Só depois (time completo) monta o adversário.
+   */
+  const confirmarPreenchimentoVaga = useCallback(
+    async (entraId: string) => {
+      if (fillingRef.current) return;
+      const s = useJogosStore.getState().sessao;
+      const pel = useJogosStore.getState().pelada;
+      const pendente = usePartidaLiveStore.getState().pendentePreencherVaga;
+      if (!s || !pel || !pendente) {
+        throw new Error('Nenhuma vaga pendente para preencher.');
+      }
+      fillingRef.current = true;
+      try {
+        const filled = preencherVagaVencedorEMontarAdversario(
+          s.ordemChegada,
+          s.timeBrancoIds,
+          s.timePretoIds,
+          pendente.ladoQueFica,
+          entraId,
+          pel.jogadoresPorEquipe,
+        );
+        if (!filled) {
+          throw new Error('Não foi possível preencher a vaga com este atleta.');
+        }
+        const updatedSessao = await repos.sessoes.update(s.id, {
+          ordemChegada: filled.ordemChegada,
+          timeBrancoIds: filled.timeBrancoIds,
+          timePretoIds: filled.timePretoIds,
+          status: 'aberta',
+        });
+        setSessao(updatedSessao);
+        setMensagemFim(filled.mensagem);
+        if (filled.precisaPreencherVaga && filled.ladoQueFica) {
+          setPendentePreencherVaga({
+            ladoQueFica: filled.ladoQueFica,
+            mensagem: MSG_PREENCHER_VAGA_VENCEDOR,
+          });
+        } else {
+          setPendentePreencherVaga(null);
+        }
+        return filled;
+      } finally {
+        fillingRef.current = false;
+      }
+    },
+    [repos.sessoes, setMensagemFim, setPendentePreencherVaga, setSessao],
   );
 
   // Auto-fim por tempo
@@ -328,6 +397,7 @@ export function usePartidaLive() {
     setPartida(current);
     setSegmentStartedAt(Date.now());
     setMensagemFim(null);
+    setPendentePreencherVaga(null);
   }, [
     pelada,
     repos.partidas,
@@ -336,6 +406,7 @@ export function usePartidaLive() {
     setEventos,
     setMensagemFim,
     setPartida,
+    setPendentePreencherVaga,
     setSegmentStartedAt,
     setSessao,
   ]);
@@ -640,6 +711,7 @@ export function usePartidaLive() {
     amarelosAtivos,
     ultimoVencedor,
     segmentStartedAt,
+    pendentePreencherVaga,
     load,
     iniciar,
     pausar,
@@ -649,6 +721,7 @@ export function usePartidaLive() {
     marcarVermelho,
     removerJogador,
     substituirJogador,
+    confirmarPreenchimentoVaga,
     encerrarManual,
     tempoAtualMs,
   };
