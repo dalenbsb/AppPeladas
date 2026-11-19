@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Atleta } from '@/domain/types';
 import { POSICAO_LABELS } from '@/features/atletas/labels';
@@ -9,23 +9,28 @@ export type CartaoMarker = 'amarelo' | 'vermelho' | null;
 type Props = {
   atleta: Atleta;
   index?: number;
-  dragHandle?: boolean;
   /** Texto extra (ex.: contagem do amarelo). */
   badge?: string;
   /** Destaque visual do tempo de retorno (amarelo 2 min). */
   retornoDestaque?: boolean;
   /** Marcador de cartão na partida atual. */
   cartao?: CartaoMarker;
+  /** Botões para reordenar a fila (substitui drag incompatível com RN atual). */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 };
 
 export function AtletaFilaRow({
   atleta,
   index,
-  dragHandle,
   badge,
   retornoDestaque,
   cartao,
+  onMoveUp,
+  onMoveDown,
 }: Props) {
+  const showReorder = onMoveUp != null || onMoveDown != null;
+
   return (
     <View style={[styles.row, retornoDestaque && styles.rowRetorno]}>
       {index != null ? <Text style={styles.index}>{index + 1}</Text> : null}
@@ -69,7 +74,36 @@ export function AtletaFilaRow({
           </View>
         ) : null}
       </View>
-      {dragHandle ? <Text style={styles.handle}>☰</Text> : null}
+      {showReorder ? (
+        <View style={styles.reorder}>
+          <Pressable
+            onPress={onMoveUp}
+            disabled={!onMoveUp}
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              !onMoveUp && styles.reorderBtnDisabled,
+              pressed && onMoveUp != null && styles.reorderBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Mover ${atleta.nome} para cima`}
+          >
+            <Text style={[styles.reorderLabel, !onMoveUp && styles.reorderLabelDisabled]}>↑</Text>
+          </Pressable>
+          <Pressable
+            onPress={onMoveDown}
+            disabled={!onMoveDown}
+            style={({ pressed }) => [
+              styles.reorderBtn,
+              !onMoveDown && styles.reorderBtnDisabled,
+              pressed && onMoveDown != null && styles.reorderBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Mover ${atleta.nome} para baixo`}
+          >
+            <Text style={[styles.reorderLabel, !onMoveDown && styles.reorderLabelDisabled]}>↓</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -165,9 +199,34 @@ const styles = StyleSheet.create({
     color: '#5c4a00',
     fontVariant: ['tabular-nums'],
   },
-  handle: {
-    fontSize: 18,
+  reorder: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  reorderBtn: {
+    minWidth: 36,
+    minHeight: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.chip,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  reorderBtnPressed: {
+    opacity: 0.85,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.35,
+  },
+  reorderLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.brand,
+    lineHeight: 18,
+  },
+  reorderLabelDisabled: {
     color: colors.textMuted,
-    paddingHorizontal: 4,
   },
 });
