@@ -9,6 +9,8 @@ import { duracaoLimiteMs, tempoExibidoMs } from './cronometro';
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  substituirPorProximo,
+  ultimoVencedorDoCiclo,
   vencedorDaPartida,
 } from './fimPartida';
 import { montarTimesDaFila } from './montarTimes';
@@ -20,6 +22,13 @@ import { useJogosStore } from './jogosStore';
 
 const KEEP_AWAKE_TAG = 'apppeladas-partida';
 const AMARELO_MS = 2 * 60 * 1000;
+
+function countAmarelosNaPartida(
+  eventos: { tipo: string; atletaId: string }[],
+  atletaId: string,
+): number {
+  return eventos.filter((e) => e.tipo === 'amarelo' && e.atletaId === atletaId).length;
+}
 
 function resolveTimes(
   sessao: {
@@ -75,15 +84,21 @@ export function usePartidaLive() {
       resetLive();
       return;
     }
-    const [aberta, ultima] = await Promise.all([
+    const [aberta, ultimaComVencedor] = await Promise.all([
       repos.partidas.getOpenBySessao(sessao.id),
       repos.partidas.getLastFinishedBySessao(sessao.id),
     ]);
-    if (ultima) {
-      setUltimoVencedor(vencedorDaPartida(ultima.placarBranco, ultima.placarPreto));
-    } else {
-      setUltimoVencedor(null);
-    }
+    // Ignora empates: a vantagem do ciclo é a última vitória de fato.
+    setUltimoVencedor(
+      ultimaComVencedor
+        ? ultimoVencedorDoCiclo([
+            {
+              placarBranco: ultimaComVencedor.placarBranco,
+              placarPreto: ultimaComVencedor.placarPreto,
+            },
+          ])
+        : null,
+    );
     if (!aberta) {
       setPartida(null);
       setEventos([]);
@@ -217,6 +232,10 @@ export function usePartidaLive() {
         const v = vencedorDaPartida(encerrada.placarBranco, encerrada.placarPreto);
         if (v) setUltimoVencedor(v);
 
+        // Libera a UI da próxima partida (vencedor fica + próximo time) com placar zerado.
+        setPartida(null);
+        setEventos([]);
+
         return { partida: encerrada, mensagem: fim.mensagem };
       } finally {
         endingRef.current = false;
@@ -226,6 +245,7 @@ export function usePartidaLive() {
       repos.partidas,
       repos.sessoes,
       setAmarelosAtivos,
+      setEventos,
       setMensagemFim,
       setPartida,
       setSegmentStartedAt,
@@ -420,22 +440,72 @@ export function usePartidaLive() {
     [maybeEndByGoals, repos.eventos, repos.partidas, setEventos, setPartida],
   );
 
+  const syncElencoPartida = useCallback(
+    async (
+      timeBrancoIds: string[],
+      timePretoIds: string[],
+    ) => {
+      const p = usePartidaLiveStore.getState().partida;
+      if (!p || p.encerradaEm) return;
+      const updated = await repos.partidas.update(p.id, {
+        timeBrancoIds,
+        timePretoIds,
+      });
+      setPartida(updated);
+    },
+    [repos.partidas, setPartida],
+  );
+
   const marcarAmarelo = useCallback(
     async (atletaId: string) => {
       const p = usePartidaLiveStore.getState().partida;
       const pel = useJogosStore.getState().pelada;
-      if (!p || !pel || !p.iniciadaEm || p.pausada || p.encerradaEm) {
+      const s = useJogosStore.getState().sessao;
+      if (!p || !pel || !s || !p.iniciadaEm || p.pausada || p.encerradaEm) {
         throw new Error('Partida não está em andamento.');
       }
-      const retornaEm = pel.amareloDoisMinutos
-        ? new Date(Date.now() + AMARELO_MS).toISOString()
-        : undefined;
+      const jaAmarelos = countAmarelosNaPartida(
+        usePartidaLiveStore.getState().eventos,
+        atletaId,
+      );
+      const retornaEm =
+        pel.amareloDoisMinutos && jaAmarelos === 0
+          ? new Date(Date.now() + AMARELO_MS).toISOString()
+          : undefined;
       await repos.eventos.create({
         partidaId: p.id,
         tipo: 'amarelo',
         atletaId,
         meta: retornaEm ? { retornaEm } : null,
       });
+
+      // Segundo amarelo na partida = vermelho automático + fim da fila.
+      if (jaAmarelos >= 1) {
+        await repos.eventos.create({
+          partidaId: p.id,
+          tipo: 'vermelho',
+          atletaId,
+          meta: { gravidadeVermelho: 'grave', observacao: 'segundo amarelo' },
+        });
+        const moved = enviarAoFimDaFila(
+          s.ordemChegada,
+          s.timeBrancoIds,
+          s.timePretoIds,
+          atletaId,
+        );
+        const updatedSessao = await repos.sessoes.update(s.id, {
+          ...moved,
+          status: 'em_partida',
+        });
+        setSessao(updatedSessao);
+        await syncElencoPartida(moved.timeBrancoIds, moved.timePretoIds);
+        setAmarelosAtivos(
+          usePartidaLiveStore.getState().amarelosAtivos.filter((a) => a.atletaId !== atletaId),
+        );
+        setEventos(await repos.eventos.listByPartida(p.id));
+        return;
+      }
+
       setEventos(await repos.eventos.listByPartida(p.id));
       if (retornaEm) {
         const next = [
@@ -445,7 +515,7 @@ export function usePartidaLive() {
         setAmarelosAtivos(next);
       }
     },
-    [repos.eventos, setAmarelosAtivos, setEventos],
+    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao, syncElencoPartida],
   );
 
   const marcarVermelho = useCallback(
@@ -472,27 +542,37 @@ export function usePartidaLive() {
         status: 'em_partida',
       });
       setSessao(updatedSessao);
+      await syncElencoPartida(moved.timeBrancoIds, moved.timePretoIds);
       setEventos(await repos.eventos.listByPartida(p.id));
       setAmarelosAtivos(
         usePartidaLiveStore.getState().amarelosAtivos.filter((a) => a.atletaId !== atletaId),
       );
     },
-    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao],
+    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao, syncElencoPartida],
   );
 
   const removerJogador = useCallback(
     async (atletaId: string) => {
       const p = usePartidaLiveStore.getState().partida;
       const s = useJogosStore.getState().sessao;
-      if (!p || !s || !p.iniciadaEm || p.encerradaEm) {
-        throw new Error('Partida não está em andamento.');
+      if (!s) throw new Error('Sessão não carregada.');
+      if (p?.encerradaEm) throw new Error('Partida já encerrada.');
+
+      const onField = new Set([...s.timeBrancoIds, ...s.timePretoIds]);
+      if (!onField.has(atletaId)) {
+        throw new Error('Atleta não está em campo.');
       }
-      await repos.eventos.create({
-        partidaId: p.id,
-        tipo: 'remocao',
-        atletaId,
-        meta: null,
-      });
+
+      if (p?.iniciadaEm && !p.encerradaEm) {
+        await repos.eventos.create({
+          partidaId: p.id,
+          tipo: 'remocao',
+          atletaId,
+          meta: null,
+        });
+        setEventos(await repos.eventos.listByPartida(p.id));
+      }
+
       const moved = enviarAoFimDaFila(
         s.ordemChegada,
         s.timeBrancoIds,
@@ -501,12 +581,54 @@ export function usePartidaLive() {
       );
       const updatedSessao = await repos.sessoes.update(s.id, moved);
       setSessao(updatedSessao);
-      setEventos(await repos.eventos.listByPartida(p.id));
+      await syncElencoPartida(moved.timeBrancoIds, moved.timePretoIds);
       setAmarelosAtivos(
         usePartidaLiveStore.getState().amarelosAtivos.filter((a) => a.atletaId !== atletaId),
       );
     },
-    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao],
+    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao, syncElencoPartida],
+  );
+
+  /** Remove do time e coloca o próximo da fila de próximos no lugar (antes ou durante). */
+  const substituirJogador = useCallback(
+    async (atletaId: string) => {
+      const p = usePartidaLiveStore.getState().partida;
+      const s = useJogosStore.getState().sessao;
+      if (!s) throw new Error('Sessão não carregada.');
+      if (p?.encerradaEm) throw new Error('Partida já encerrada.');
+
+      const swapped = substituirPorProximo(
+        s.ordemChegada,
+        s.timeBrancoIds,
+        s.timePretoIds,
+        atletaId,
+      );
+      if (!swapped) {
+        throw new Error('Não há atleta na lista de próximos para entrar.');
+      }
+
+      if (p?.iniciadaEm && !p.encerradaEm) {
+        await repos.eventos.create({
+          partidaId: p.id,
+          tipo: 'remocao',
+          atletaId,
+          meta: { observacao: `substituição por ${swapped.entrouId}` },
+        });
+        setEventos(await repos.eventos.listByPartida(p.id));
+      }
+
+      const updatedSessao = await repos.sessoes.update(s.id, {
+        ordemChegada: swapped.ordemChegada,
+        timeBrancoIds: swapped.timeBrancoIds,
+        timePretoIds: swapped.timePretoIds,
+      });
+      setSessao(updatedSessao);
+      await syncElencoPartida(swapped.timeBrancoIds, swapped.timePretoIds);
+      setAmarelosAtivos(
+        usePartidaLiveStore.getState().amarelosAtivos.filter((a) => a.atletaId !== atletaId),
+      );
+    },
+    [repos.eventos, repos.sessoes, setAmarelosAtivos, setEventos, setSessao, syncElencoPartida],
   );
 
   const encerrarManual = useCallback(async () => {
@@ -526,6 +648,7 @@ export function usePartidaLive() {
     marcarAmarelo,
     marcarVermelho,
     removerJogador,
+    substituirJogador,
     encerrarManual,
     tempoAtualMs,
   };

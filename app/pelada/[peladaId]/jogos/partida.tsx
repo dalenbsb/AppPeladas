@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import type { Atleta } from '@/domain/types';
-import { AtletaFilaRow } from '@/features/jogos/AtletaFilaRow';
+import { AtletaFilaRow, type CartaoMarker } from '@/features/jogos/AtletaFilaRow';
 import { formatCountdown } from '@/features/jogos/cronometro';
 import { montarTimesDaFila } from '@/features/jogos/montarTimes';
 import {
@@ -29,6 +29,7 @@ function TimeColumn({
   atletasById,
   n,
   amareloRestante,
+  cartoes,
   interactive,
   onPressAtleta,
 }: {
@@ -37,6 +38,7 @@ function TimeColumn({
   atletasById: Record<string, Atleta>;
   n: number;
   amareloRestante: Record<string, number>;
+  cartoes: Record<string, CartaoMarker>;
   interactive: boolean;
   onPressAtleta: (atleta: Atleta) => void;
 }) {
@@ -57,11 +59,18 @@ function TimeColumn({
           );
         }
         const restMs = amareloRestante[atleta.id];
-        const badge =
-          restMs != null && restMs > 0
-            ? `Amarelo · volta em ${formatCountdown(restMs)}`
-            : undefined;
-        const row = <AtletaFilaRow atleta={atleta} badge={badge} />;
+        const emRetorno = restMs != null && restMs > 0;
+        const badge = emRetorno
+          ? `Volta em ${formatCountdown(restMs)}`
+          : undefined;
+        const row = (
+          <AtletaFilaRow
+            atleta={atleta}
+            badge={badge}
+            retornoDestaque={emRetorno}
+            cartao={cartoes[atleta.id] ?? null}
+          />
+        );
         if (!interactive) {
           return <View key={atleta.id}>{row}</View>;
         }
@@ -92,11 +101,13 @@ export default function PartidaScreen() {
     marcarAmarelo,
     marcarVermelho,
     removerJogador,
+    substituirJogador,
     encerrarManual,
   } = usePartidaLiveApi();
 
   const rodando = usePartidaLiveStore(selectPartidaRodando);
   const ativa = usePartidaLiveStore(selectPartidaAtiva);
+  const eventos = usePartidaLiveStore((s) => s.eventos);
   const mensagemFim = usePartidaLiveStore((s) => s.mensagemFim);
   const setMensagemFim = usePartidaLiveStore((s) => s.setMensagemFim);
   const nowMs = usePartidaLiveStore((s) => s.nowMs);
@@ -123,6 +134,24 @@ export default function PartidaScreen() {
     }
     return map;
   }, [amarelosAtivos, nowMs]);
+
+  const cartoes = useMemo(() => {
+    const map: Record<string, CartaoMarker> = {};
+    for (const ev of eventos) {
+      if (ev.tipo === 'vermelho') {
+        map[ev.atletaId] = 'vermelho';
+      } else if (ev.tipo === 'amarelo' && map[ev.atletaId] !== 'vermelho') {
+        map[ev.atletaId] = 'amarelo';
+      }
+    }
+    return map;
+  }, [eventos]);
+
+  const temProximo = useMemo(() => {
+    if (!sessao) return false;
+    const onField = new Set([...timeBrancoIds, ...timePretoIds]);
+    return sessao.ordemChegada.some((id) => !onField.has(id));
+  }, [sessao, timeBrancoIds, timePretoIds]);
 
   const colegas = useMemo(() => {
     if (!selected) return [] as Atleta[];
@@ -175,6 +204,11 @@ export default function PartidaScreen() {
 
   const timesProntos =
     timeBrancoIds.length >= n && timePretoIds.length >= n;
+
+  // Com times montados (antes ou durante): tocar abre substituição/remoção; em jogo, também gols/cartões.
+  const podeAjustarElenco =
+    (timeBrancoIds.length > 0 || timePretoIds.length > 0) &&
+    (!partida || !partida.encerradaEm);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -233,7 +267,8 @@ export default function PartidaScreen() {
           atletasById={atletasById}
           n={n}
           amareloRestante={amareloRestante}
-          interactive={rodando}
+          cartoes={cartoes}
+          interactive={podeAjustarElenco}
           onPressAtleta={setSelected}
         />
         <TimeColumn
@@ -242,13 +277,18 @@ export default function PartidaScreen() {
           atletasById={atletasById}
           n={n}
           amareloRestante={amareloRestante}
-          interactive={rodando}
+          cartoes={cartoes}
+          interactive={podeAjustarElenco}
           onPressAtleta={setSelected}
         />
       </View>
 
-      {rodando ? (
-        <Text style={styles.hint}>Toque em um jogador para gol, cartão ou remoção.</Text>
+      {podeAjustarElenco ? (
+        <Text style={styles.hint}>
+          {rodando
+            ? 'Toque em um jogador para gol, cartão, substituição ou remoção.'
+            : 'Toque em um jogador para substituir pelo próximo ou remover (antes do início).'}
+        </Text>
       ) : null}
 
       <PlayerActionModal
@@ -256,12 +296,15 @@ export default function PartidaScreen() {
         atleta={selected}
         colegas={colegas}
         amareloDoisMinutos={Boolean(pelada?.amareloDoisMinutos)}
+        partidaEmAndamento={rodando}
+        temProximo={temProximo}
         onClose={() => setSelected(null)}
         onGol={marcarGol}
         onGolContra={marcarGolContra}
         onAmarelo={marcarAmarelo}
         onVermelho={marcarVermelho}
         onRemover={removerJogador}
+        onSubstituir={substituirJogador}
       />
     </ScrollView>
   );

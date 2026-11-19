@@ -213,6 +213,20 @@ export function vencedorDaPartida(
   return placarBranco > placarPreto ? 'branco' : 'preto';
 }
 
+/**
+ * Restaura o lado em vantagem no ciclo a partir do histórico (mais recente primeiro).
+ * Empates são ignorados — a vantagem vem da última vitória de fato.
+ */
+export function ultimoVencedorDoCiclo(
+  partidasMaisRecentePrimeiro: Array<{ placarBranco: number; placarPreto: number }>,
+): TimeSide | null {
+  for (const p of partidasMaisRecentePrimeiro) {
+    const v = vencedorDaPartida(p.placarBranco, p.placarPreto);
+    if (v) return v;
+  }
+  return null;
+}
+
 /** Move atleta para o fim da ordem e remove dos times em campo. */
 export function enviarAoFimDaFila(
   ordemChegada: string[],
@@ -230,5 +244,61 @@ export function enviarAoFimDaFila(
     ordemChegada: [...ordemSem, atletaId],
     timeBrancoIds: semAtleta(timeBrancoIds),
     timePretoIds: semAtleta(timePretoIds),
+  };
+}
+
+/**
+ * Troca um atleta em campo pelo próximo da fila de espera.
+ * O que sai vai para o fim dos próximos; o times em campo (lados) permanecem.
+ */
+export function substituirPorProximo(
+  ordemChegada: string[],
+  timeBrancoIds: string[],
+  timePretoIds: string[],
+  atletaId: string,
+): {
+  ordemChegada: string[];
+  timeBrancoIds: string[];
+  timePretoIds: string[];
+  entrouId: string;
+} | null {
+  const onField = new Set([...timeBrancoIds, ...timePretoIds]);
+  if (!onField.has(atletaId)) return null;
+
+  const waiting = ordemChegada.filter((id) => !onField.has(id));
+  const entrouId = waiting[0];
+  if (!entrouId) return null;
+
+  const swap = (ids: string[]) => ids.map((id) => (id === atletaId ? entrouId : id));
+  const novoBranco = swap(timeBrancoIds);
+  const novoPreto = swap(timePretoIds);
+  const novaEspera = [...waiting.slice(1), atletaId];
+  return {
+    ordemChegada: remontarOrdemAposRotacao(novoBranco, novoPreto, novaEspera),
+    timeBrancoIds: novoBranco,
+    timePretoIds: novoPreto,
+    entrouId,
+  };
+}
+
+/**
+ * Reordena só a fila de próximos, preservando os times em campo.
+ * `novaFilaProximos` deve conter exatamente os IDs que estavam fora de campo.
+ */
+export function reordenarProximos(
+  timeBrancoIds: string[],
+  timePretoIds: string[],
+  novaFilaProximos: string[],
+): {
+  ordemChegada: string[];
+  timeBrancoIds: string[];
+  timePretoIds: string[];
+} {
+  const onField = new Set([...timeBrancoIds, ...timePretoIds]);
+  const limpa = uniquePreserve(novaFilaProximos.filter((id) => !onField.has(id)));
+  return {
+    ordemChegada: remontarOrdemAposRotacao(timeBrancoIds, timePretoIds, limpa),
+    timeBrancoIds: [...timeBrancoIds],
+    timePretoIds: [...timePretoIds],
   };
 }

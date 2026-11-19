@@ -11,12 +11,17 @@ type Props = {
   atleta: Atleta | null;
   colegas: Atleta[];
   amareloDoisMinutos: boolean;
+  /** Partida rodando: gols/cartões. Antes do início: só substituição/remoção. */
+  partidaEmAndamento: boolean;
+  /** Há alguém na lista de próximos para entrar. */
+  temProximo: boolean;
   onClose: () => void;
   onGol: (atletaId: string, assistenteId?: string | null) => Promise<void>;
   onGolContra: (atletaId: string) => Promise<void>;
   onAmarelo: (atletaId: string) => Promise<void>;
   onVermelho: (atletaId: string, gravidade: 'leve' | 'grave') => Promise<void>;
   onRemover: (atletaId: string) => Promise<void>;
+  onSubstituir: (atletaId: string) => Promise<void>;
 };
 
 export function PlayerActionModal({
@@ -24,12 +29,15 @@ export function PlayerActionModal({
   atleta,
   colegas,
   amareloDoisMinutos,
+  partidaEmAndamento,
+  temProximo,
   onClose,
   onGol,
   onGolContra,
   onAmarelo,
   onVermelho,
   onRemover,
+  onSubstituir,
 }: Props) {
   if (!atleta) return null;
 
@@ -40,12 +48,15 @@ export function PlayerActionModal({
         atleta={atleta}
         colegas={colegas}
         amareloDoisMinutos={amareloDoisMinutos}
+        partidaEmAndamento={partidaEmAndamento}
+        temProximo={temProximo}
         onClose={onClose}
         onGol={onGol}
         onGolContra={onGolContra}
         onAmarelo={onAmarelo}
         onVermelho={onVermelho}
         onRemover={onRemover}
+        onSubstituir={onSubstituir}
       />
     </Modal>
   );
@@ -55,12 +66,15 @@ function PlayerActionSheet({
   atleta,
   colegas,
   amareloDoisMinutos,
+  partidaEmAndamento,
+  temProximo,
   onClose,
   onGol,
   onGolContra,
   onAmarelo,
   onVermelho,
   onRemover,
+  onSubstituir,
 }: Omit<Props, 'visible' | 'atleta'> & { atleta: Atleta }) {
   const [step, setStep] = useState<Step>('acoes');
   const [busy, setBusy] = useState(false);
@@ -93,29 +107,44 @@ function PlayerActionSheet({
       <Pressable style={StyleSheet.absoluteFill} onPress={resetAndClose} />
       <View style={styles.sheet}>
         <Text style={styles.title}>{title}</Text>
+        {!partidaEmAndamento && step === 'acoes' ? (
+          <Text style={styles.subtitle}>Times montados — ajuste o elenco antes de iniciar.</Text>
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {step === 'acoes' ? (
           <>
-            <Action label="Marcar gol" disabled={busy} onPress={() => setStep('assistencia')} />
+            {partidaEmAndamento ? (
+              <>
+                <Action label="Marcar gol" disabled={busy} onPress={() => setStep('assistencia')} />
+                <Action
+                  label="Gol contra"
+                  disabled={busy}
+                  onPress={() => void run(() => onGolContra(atleta.id))}
+                />
+                <Action
+                  label={
+                    amareloDoisMinutos ? 'Cartão amarelo (2 min fora)' : 'Cartão amarelo'
+                  }
+                  disabled={busy}
+                  onPress={() => void run(() => onAmarelo(atleta.id))}
+                />
+                <Action
+                  label="Cartão vermelho"
+                  disabled={busy}
+                  danger
+                  onPress={() => setStep('vermelho')}
+                />
+              </>
+            ) : null}
             <Action
-              label="Gol contra"
-              disabled={busy}
-              onPress={() => void run(() => onGolContra(atleta.id))}
+              label="Substituir pelo próximo"
+              disabled={busy || !temProximo}
+              onPress={() => void run(() => onSubstituir(atleta.id))}
             />
-            <Action
-              label={
-                amareloDoisMinutos ? 'Cartão amarelo (2 min fora)' : 'Cartão amarelo'
-              }
-              disabled={busy}
-              onPress={() => void run(() => onAmarelo(atleta.id))}
-            />
-            <Action
-              label="Cartão vermelho"
-              disabled={busy}
-              danger
-              onPress={() => setStep('vermelho')}
-            />
+            {!temProximo ? (
+              <Text style={styles.hint}>Ninguém na lista de próximos para entrar.</Text>
+            ) : null}
             <Action
               label="Remover do time"
               disabled={busy}
@@ -216,7 +245,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: colors.brand,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.textMuted,
     marginBottom: 8,
+    lineHeight: 18,
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    paddingHorizontal: 8,
+    marginBottom: 4,
   },
   error: {
     color: colors.danger,

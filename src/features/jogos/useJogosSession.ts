@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { useRepositories } from '@/db/DatabaseProvider';
 import type { Pelada, SessaoJogo } from '@/domain/types';
 
+import { reordenarProximos } from './fimPartida';
 import { useJogosStore } from './jogosStore';
 import { montarTimesDaFila } from './montarTimes';
 import { realizarSorteio } from './sorteio';
@@ -71,6 +72,26 @@ export function useJogosSession() {
     [pelada, repos.sessoes, sessao, setSessao],
   );
 
+  /** Reordena a fila de próximos sem mexer nos times em campo. */
+  const persistProximos = useCallback(
+    async (novaFilaProximos: string[]) => {
+      if (!sessao || !pelada) return;
+      const n = pelada.jogadoresPorEquipe;
+      const temTimes =
+        sessao.timeBrancoIds.length > 0 || sessao.timePretoIds.length > 0;
+      const branco = temTimes
+        ? sessao.timeBrancoIds
+        : montarTimesDaFila(sessao.ordemChegada, n).timeBrancoIds;
+      const preto = temTimes
+        ? sessao.timePretoIds
+        : montarTimesDaFila(sessao.ordemChegada, n).timePretoIds;
+      const next = reordenarProximos(branco, preto, novaFilaProximos);
+      const updated = await repos.sessoes.update(sessao.id, next);
+      setSessao(updated);
+    },
+    [pelada, repos.sessoes, sessao, setSessao],
+  );
+
   const addAtleta = useCallback(
     async (atletaId: string) => {
       if (!sessao) return;
@@ -131,6 +152,7 @@ export function useJogosSession() {
     atletas,
     atletasById,
     persistOrdem,
+    persistProximos,
     addAtleta,
     limparFila,
     sortear,
