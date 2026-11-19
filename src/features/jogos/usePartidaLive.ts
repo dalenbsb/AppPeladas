@@ -5,7 +5,11 @@ import { useRepositories } from '@/db/DatabaseProvider';
 import type { MotivoFimPartida, TimeSide } from '@/domain/types';
 import { nowIso } from '@/db/ids';
 
-import { duracaoLimiteMs, tempoExibidoMs } from './cronometro';
+import {
+  duracaoLimiteMs,
+  segmentStartedAtAposReload,
+  tempoExibidoMs,
+} from './cronometro';
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
@@ -89,13 +93,17 @@ export function usePartidaLive() {
   const fillingRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (!sessao || !pelada) {
+    // Lê do store: deps só em sessao/pelada id — updates de roster (2º amarelo)
+    // não devem re-disparar load e zerar o cronômetro.
+    const s = useJogosStore.getState().sessao;
+    const pel = useJogosStore.getState().pelada;
+    if (!s || !pel) {
       resetLive();
       return;
     }
     const [aberta, ultimaComVencedor] = await Promise.all([
-      repos.partidas.getOpenBySessao(sessao.id),
-      repos.partidas.getLastFinishedBySessao(sessao.id),
+      repos.partidas.getOpenBySessao(s.id),
+      repos.partidas.getLastFinishedBySessao(s.id),
     ]);
     // Ignora empates: a vantagem do ciclo é a última vitória de fato.
     setUltimoVencedor(
@@ -116,10 +124,20 @@ export function usePartidaLive() {
       return;
     }
     const eventos = await repos.eventos.listByPartida(aberta.id);
+    const prev = usePartidaLiveStore.getState();
+    const rodando = Boolean(aberta.iniciadaEm) && !aberta.pausada && !aberta.encerradaEm;
     setPartida(aberta);
     setEventos(eventos);
-    const rodando = Boolean(aberta.iniciadaEm) && !aberta.pausada && !aberta.encerradaEm;
-    setSegmentStartedAt(rodando ? Date.now() : null);
+    // Não reinicia o segmento se a mesma partida já está rodando na UI
+    // (roster update via setSessao — ex. segundo amarelo — não deve zerar o relógio).
+    setSegmentStartedAt(
+      segmentStartedAtAposReload({
+        partidaId: aberta.id,
+        rodando,
+        prevPartidaId: prev.partida?.id,
+        prevSegmentStartedAt: prev.segmentStartedAt,
+      }),
+    );
 
     const agora = Date.now();
     const amarelos: AmareloAtivo[] = [];
@@ -131,11 +149,12 @@ export function usePartidaLive() {
     }
     setAmarelosAtivos(amarelos);
   }, [
-    pelada,
+    // ids: troca de sessão/pelada re-carrega; mutação de roster na mesma sessão não.
+    pelada?.id,
     repos.eventos,
     repos.partidas,
     resetLive,
-    sessao,
+    sessao?.id,
     setAmarelosAtivos,
     setEventos,
     setPartida,
