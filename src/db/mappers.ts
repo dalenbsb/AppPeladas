@@ -67,6 +67,7 @@ export interface PartidaRow {
   placar_branco: number;
   placar_preto: number;
   tempo_decorrido_ms?: number | null;
+  segment_started_at_ms?: number | null;
   time_branco_ids_json?: string | null;
   time_preto_ids_json?: string | null;
   cor_time1?: string | null;
@@ -163,6 +164,8 @@ export function mapPartida(row: PartidaRow): Partida {
     placarBranco: row.placar_branco,
     placarPreto: row.placar_preto,
     tempoDecorridoMs: row.tempo_decorrido_ms ?? 0,
+    segmentStartedAtMs:
+      typeof row.segment_started_at_ms === 'number' ? row.segment_started_at_ms : null,
     timeBrancoIds: parseIdJson(row.time_branco_ids_json),
     timePretoIds: parseIdJson(row.time_preto_ids_json),
     corTime1: row.cor_time1?.trim() || DEFAULT_COR_TIME1,

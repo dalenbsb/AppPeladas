@@ -28,17 +28,27 @@ export class EventoRepository {
   }
 
   /**
-   * Remove `retornaEm` dos amarelos ainda em suspensão (ex.: liberação por gol).
-   * Mantém o registro do cartão para estatísticas/histórico.
+   * Remove `retornaEm` / `retornaEmRestanteMs` dos amarelos ainda em suspensão
+   * (ex.: liberação por gol). Mantém o registro do cartão para estatísticas/histórico.
    */
   async clearAmareloSuspensaoAtiva(partidaId: string, agoraIso = nowIso()): Promise<number> {
     const eventos = await this.listByPartida(partidaId);
     const agora = new Date(agoraIso).getTime();
     let cleared = 0;
     for (const ev of eventos) {
-      if (ev.tipo !== 'amarelo' || !ev.meta?.retornaEm) continue;
-      if (new Date(ev.meta.retornaEm).getTime() <= agora) continue;
-      const { retornaEm: _r, ...rest } = ev.meta;
+      if (ev.tipo !== 'amarelo' || !ev.meta) continue;
+      const restante = ev.meta.retornaEmRestanteMs;
+      const retornaEm = ev.meta.retornaEm;
+      const ativoPorRestante =
+        typeof restante === 'number' && Number.isFinite(restante) && restante > 0;
+      const ativoPorRetorno =
+        Boolean(retornaEm) && new Date(retornaEm!).getTime() > agora;
+      if (!ativoPorRestante && !ativoPorRetorno) continue;
+      const {
+        retornaEm: _r,
+        retornaEmRestanteMs: _rest,
+        ...rest
+      } = ev.meta;
       const nextMeta: EventoPartidaMeta = {
         ...rest,
         observacao: rest.observacao
@@ -49,6 +59,56 @@ export class EventoRepository {
       cleared += 1;
     }
     return cleared;
+  }
+
+  /**
+   * Congela timers de retorno de amarelo ao pausar a partida:
+   * troca `retornaEm` por `retornaEmRestanteMs`.
+   */
+  async pausarAmareloSuspensaoAtiva(
+    partidaId: string,
+    agoraMs = Date.now(),
+  ): Promise<number> {
+    const eventos = await this.listByPartida(partidaId);
+    let updated = 0;
+    for (const ev of eventos) {
+      if (ev.tipo !== 'amarelo' || !ev.meta?.retornaEm) continue;
+      const restante = new Date(ev.meta.retornaEm).getTime() - agoraMs;
+      if (restante <= 0) continue;
+      const { retornaEm: _r, ...rest } = ev.meta;
+      await this.updateMeta(ev.id, {
+        ...rest,
+        retornaEmRestanteMs: restante,
+      });
+      updated += 1;
+    }
+    return updated;
+  }
+
+  /**
+   * Retoma timers de retorno de amarelo ao despausar a partida:
+   * troca `retornaEmRestanteMs` por novo `retornaEm`.
+   */
+  async retomarAmareloSuspensaoAtiva(
+    partidaId: string,
+    agoraMs = Date.now(),
+  ): Promise<number> {
+    const eventos = await this.listByPartida(partidaId);
+    let updated = 0;
+    for (const ev of eventos) {
+      if (ev.tipo !== 'amarelo' || !ev.meta) continue;
+      const restante = ev.meta.retornaEmRestanteMs;
+      if (typeof restante !== 'number' || !Number.isFinite(restante) || restante <= 0) {
+        continue;
+      }
+      const { retornaEmRestanteMs: _rest, ...rest } = ev.meta;
+      await this.updateMeta(ev.id, {
+        ...rest,
+        retornaEm: new Date(agoraMs + restante).toISOString(),
+      });
+      updated += 1;
+    }
+    return updated;
   }
 
   /** Eventos de todas as partidas de uma pelada (para agregações). */

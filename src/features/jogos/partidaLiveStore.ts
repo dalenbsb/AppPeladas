@@ -6,8 +6,23 @@ import { formatCronometro, tempoExibidoMs } from './cronometro';
 
 export type AmareloAtivo = {
   atletaId: string;
-  retornaEm: string; // ISO
+  /** ISO wall-clock de retorno enquanto a partida está rodando. */
+  retornaEm: string | null;
+  /** Ms restantes congelados enquanto a partida está pausada. */
+  restanteMs: number | null;
 };
+
+/** Ms restantes do retorno de amarelo (congela se pausado). */
+export function amareloRestanteMs(
+  item: AmareloAtivo,
+  nowMs: number,
+): number {
+  if (item.restanteMs != null) return Math.max(0, item.restanteMs);
+  if (item.retornaEm) {
+    return Math.max(0, new Date(item.retornaEm).getTime() - nowMs);
+  }
+  return 0;
+}
 
 /** Pós-partida: vencedor incompleto aguardando escolha na lista de próximos. */
 export type PendentePreencherVaga = {

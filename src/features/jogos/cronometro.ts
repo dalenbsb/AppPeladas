@@ -41,15 +41,17 @@ export function tempoExibidoMs(
 }
 
 /**
- * Ao recarregar uma partida aberta: se o mesmo jogo já está rodando na UI,
- * preserva `segmentStartedAt` para não zerar o cronômetro.
- * (Ex.: segundo amarelo / vermelho atualiza a sessão e pode re-disparar load.)
+ * Ao recarregar uma partida aberta:
+ * 1) mesma partida já rodando na UI → preserva `segmentStartedAt` em memória;
+ * 2) senão, usa âncora persistida no SQLite (sobrevive a sair da tela / remount);
+ * 3) fallback: inicia segmento em `now` (legado sem coluna).
  */
 export function segmentStartedAtAposReload(opts: {
   partidaId: string;
   rodando: boolean;
   prevPartidaId: string | null | undefined;
   prevSegmentStartedAt: number | null;
+  persistedSegmentStartedAt?: number | null;
   now?: number;
 }): number | null {
   if (!opts.rodando) return null;
@@ -58,6 +60,12 @@ export function segmentStartedAtAposReload(opts: {
     opts.prevSegmentStartedAt != null
   ) {
     return opts.prevSegmentStartedAt;
+  }
+  if (
+    opts.persistedSegmentStartedAt != null &&
+    Number.isFinite(opts.persistedSegmentStartedAt)
+  ) {
+    return opts.persistedSegmentStartedAt;
   }
   return opts.now ?? Date.now();
 }

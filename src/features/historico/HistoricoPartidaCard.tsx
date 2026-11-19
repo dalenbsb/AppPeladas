@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { isLightColor } from '@/domain/teamColors';
 import type { Atleta, EventoPartida, Partida } from '@/domain/types';
@@ -34,19 +35,40 @@ function marksForAtleta(
   return { gols, amarelos, vermelhos };
 }
 
-function TeamHeader({ label, color, score }: { label: string; color: string; score: number }) {
+function TeamHeader({
+  label,
+  color,
+  score,
+  winner,
+}: {
+  label: string;
+  color: string;
+  score: number;
+  winner: boolean;
+}) {
   return (
     <View style={styles.teamHeader}>
-      <View
-        style={[
-          styles.swatch,
-          { backgroundColor: color },
-          isLightColor(color) && styles.swatchLight,
-        ]}
-      />
-      <Text style={styles.teamName} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.teamTitleRow}>
+        <View
+          style={[
+            styles.swatch,
+            { backgroundColor: color },
+            isLightColor(color) && styles.swatchLight,
+          ]}
+        />
+        <Text style={styles.teamName} numberOfLines={1}>
+          {label}
+        </Text>
+        {winner ? (
+          <Ionicons
+            name="trophy"
+            size={14}
+            color="#C9A227"
+            accessibilityLabel="Vencedor"
+          />
+        ) : null}
+      </View>
+      <Text style={styles.placarLabel}>placar</Text>
       <Text style={styles.teamScore}>{score}</Text>
     </View>
   );
@@ -60,9 +82,7 @@ function AthleteLine({
   marks: AthleteMarks;
 }) {
   if (!atleta) {
-    return (
-      <Text style={styles.athleteMissing}>—</Text>
-    );
+    return <Text style={styles.athleteMissing}>—</Text>;
   }
   return (
     <View style={styles.athleteRow}>
@@ -71,7 +91,13 @@ function AthleteLine({
       </Text>
       <View style={styles.marks}>
         {Array.from({ length: marks.gols }, (_, i) => (
-          <View key={`g${i}`} style={styles.ball} accessibilityLabel="Gol" />
+          <Ionicons
+            key={`g${i}`}
+            name="football"
+            size={12}
+            color={colors.brand}
+            accessibilityLabel="Gol"
+          />
         ))}
         {Array.from({ length: marks.amarelos }, (_, i) => (
           <View
@@ -101,28 +127,32 @@ export function HistoricoPartidaCard({
   const ids1 = partida.timeBrancoIds;
   const ids2 = partida.timePretoIds;
   const maxRows = Math.max(ids1.length, ids2.length, 1);
+  const winnerSide =
+    partida.placarBranco > partida.placarPreto
+      ? 'branco'
+      : partida.placarPreto > partida.placarBranco
+        ? 'preto'
+        : null;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>
-        Jogo {indexNoDia}: {TIME_UI_LABELS.branco}{' '}
-        <Text style={styles.scoreInline}>
-          {partida.placarBranco} × {partida.placarPreto}
-        </Text>{' '}
-        {TIME_UI_LABELS.preto}
-      </Text>
+      <View style={styles.titleBand}>
+        <Text style={styles.title}>Jogo {indexNoDia}</Text>
+      </View>
 
       <View style={styles.scoreRow}>
         <TeamHeader
           label={TIME_UI_LABELS.branco}
           color={partida.corTime1}
           score={partida.placarBranco}
+          winner={winnerSide === 'branco'}
         />
-        <Text style={styles.vs}>×</Text>
+        <View style={styles.divider} />
         <TeamHeader
           label={TIME_UI_LABELS.preto}
           color={partida.corTime2}
           score={partida.placarPreto}
+          winner={winnerSide === 'preto'}
         />
       </View>
 
@@ -134,11 +164,16 @@ export function HistoricoPartidaCard({
               <AthleteLine
                 key={id ?? `t1-${i}`}
                 atleta={id ? atletasById[id] : undefined}
-                marks={id ? marksForAtleta(id, eventos) : { gols: 0, amarelos: 0, vermelhos: 0 }}
+                marks={
+                  id
+                    ? marksForAtleta(id, eventos)
+                    : { gols: 0, amarelos: 0, vermelhos: 0 }
+                }
               />
             );
           })}
         </View>
+        <View style={styles.dividerTall} />
         <View style={styles.column}>
           {Array.from({ length: maxRows }, (_, i) => {
             const id = ids2[i];
@@ -146,7 +181,11 @@ export function HistoricoPartidaCard({
               <AthleteLine
                 key={id ?? `t2-${i}`}
                 atleta={id ? atletasById[id] : undefined}
-                marks={id ? marksForAtleta(id, eventos) : { gols: 0, amarelos: 0, vermelhos: 0 }}
+                marks={
+                  id
+                    ? marksForAtleta(id, eventos)
+                    : { gols: 0, amarelos: 0, vermelhos: 0 }
+                }
               />
             );
           })}
@@ -162,28 +201,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
-    padding: 14,
-    gap: 10,
+    overflow: 'hidden',
+  },
+  titleBand: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
-    color: colors.brand,
-  },
-  scoreInline: {
     fontWeight: '800',
+    color: colors.brand,
   },
   scoreRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
+    alignItems: 'stretch',
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   teamHeader: {
     flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  teamTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
+    maxWidth: '100%',
   },
   swatch: {
     width: 14,
@@ -197,21 +245,38 @@ const styles = StyleSheet.create({
   teamName: {
     flexShrink: 1,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
+  placarLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 4,
+  },
   teamScore: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '800',
     color: colors.brand,
   },
-  vs: {
-    fontWeight: '700',
-    color: colors.textMuted,
+  divider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: 6,
+    alignSelf: 'stretch',
+  },
+  dividerTall: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: 6,
+    alignSelf: 'stretch',
   },
   columns: {
     flexDirection: 'row',
-    gap: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: 8,
   },
   column: {
     flex: 1,
@@ -239,17 +304,9 @@ const styles = StyleSheet.create({
     gap: 3,
     flexShrink: 0,
   },
-  ball: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: colors.brandMuted,
-    borderWidth: 1,
-    borderColor: colors.brand,
-  },
   cardYellow: {
     width: 10,
-    height: 10,
+    height: 14,
     borderRadius: 2,
     backgroundColor: '#F4D35E',
     borderWidth: StyleSheet.hairlineWidth,
@@ -257,7 +314,7 @@ const styles = StyleSheet.create({
   },
   cardRed: {
     width: 10,
-    height: 10,
+    height: 14,
     borderRadius: 2,
     backgroundColor: colors.danger,
   },

@@ -80,6 +80,7 @@ const partidas: Partida[] = [
     placarBranco: 2,
     placarPreto: 1,
     tempoDecorridoMs: 600_000,
+    segmentStartedAtMs: null,
     timeBrancoIds: ['a1', 'a2'],
     timePretoIds: ['a3', 'a4'],
     corTime1: '#FFFFFF',
@@ -98,6 +99,7 @@ const partidas: Partida[] = [
     placarBranco: 0,
     placarPreto: 0,
     tempoDecorridoMs: 600_000,
+    segmentStartedAtMs: null,
     timeBrancoIds: ['a1', 'a3'],
     timePretoIds: ['a2', 'a4'],
     corTime1: '#FFFFFF',
@@ -116,6 +118,7 @@ const partidas: Partida[] = [
     placarBranco: 1,
     placarPreto: 0,
     tempoDecorridoMs: 10_000,
+    segmentStartedAtMs: null,
     timeBrancoIds: ['a1'],
     timePretoIds: ['a2'],
     corTime1: '#FFFFFF',
@@ -211,5 +214,18 @@ const cartaoCaio = stats.cartoes.find((r) => r.atletaId === 'a3');
 assert(cartaoCaio?.vermelhos === 1, 'vermelho Caio');
 const cartaoDuda = stats.cartoes.find((r) => r.atletaId === 'a4');
 assert(cartaoDuda?.amarelos === 1, 'amarelo Duda');
+
+// Filtro por período (dia local da encerradaEm).
+const foraDoPeriodo = agregarEstatisticas(atletas, partidas, eventos, {
+  dataInicioKey: '2026-01-03',
+  dataFimKey: '2026-01-03',
+});
+assert(foraDoPeriodo.partidasEncerradas === 0, 'filtro fora do dia zera');
+
+const noDia = agregarEstatisticas(atletas, partidas, eventos, {
+  dataInicioKey: '2026-01-02',
+  dataFimKey: '2026-01-02',
+});
+assert(noDia.partidasEncerradas === 2, 'filtro no dia mantém as 2');
 
 console.log('smoke:estatisticas OK');
