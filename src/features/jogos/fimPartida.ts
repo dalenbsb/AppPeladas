@@ -1,8 +1,16 @@
 /**
  * Rotação de times ao fim da partida (vitória ou regra de empate).
- * Vencedor fica; perdedor vai para o fim da fila; próximo time entra.
+ *
+ * Fluxo padrão (há vencedor / “fica quem está ganhando”):
+ * 1) Time perdedor entra no fim da fila de próximos times (bloco intacto).
+ * 2) O próximo time completo (N) da fila entra no lugar do perdedor.
+ * 3) Vencedor permanece no seu lado; ordem = branco + preto + fila.
+ *
+ * Empate: respeita `regraEmpate` (sai os dois / pênaltis / fica quem está ganhando).
  */
 import type { RegraEmpate, TimeSide } from '@/domain/types';
+
+import { montarTimesDaFila } from './montarTimes';
 
 export type FimPartidaInput = {
   ordemChegada: string[];
@@ -37,7 +45,19 @@ function uniquePreserve(ids: string[]): string[] {
   return out;
 }
 
-/** Vencedor permanece no lado; perdedor vai ao fim; entra o próximo bloco de N. */
+/**
+ * Remonta a ordem canônica: time 1 (branco) + time 2 (preto) + fila de próximos.
+ * Assim a aba Partida e a aba Próximos times leem a mesma fila.
+ */
+export function remontarOrdemAposRotacao(
+  timeBrancoIds: string[],
+  timePretoIds: string[],
+  filaProximos: string[],
+): string[] {
+  return uniquePreserve([...timeBrancoIds, ...timePretoIds, ...filaProximos]);
+}
+
+/** Vencedor permanece no lado; perdedor vai ao fim da fila; entra o próximo bloco completo de N. */
 export function rotacionarVencedorFica(
   ordemChegada: string[],
   timeBrancoIds: string[],
@@ -50,29 +70,34 @@ export function rotacionarVencedorFica(
   const losers = vencedor === 'branco' ? [...timePretoIds] : [...timeBrancoIds];
   const onField = new Set([...winners, ...losers]);
   const waiting = ordemChegada.filter((id) => !onField.has(id));
-  const nextTeam = waiting.slice(0, size);
-  const resto = waiting.slice(size);
 
-  if (nextTeam.length === 0) {
-    // Sem time na fila: perdedor só vai ao fim; vencedor fica; time adversário fica vazio.
-    const newOrdem = uniquePreserve([...winners, ...resto, ...losers]);
+  // Só entra time completo de N; senão vencedor fica e o lado adversário fica vazio.
+  const temProximoTime = waiting.length >= size;
+  const nextTeam = temProximoTime ? waiting.slice(0, size) : [];
+  const restoEspera = temProximoTime ? waiting.slice(size) : waiting;
+
+  // Perdedor no fim da fila de próximos (após quem já esperava).
+  const filaProximos = [...restoEspera, ...losers];
+
+  const novoBranco = vencedor === 'branco' ? winners : nextTeam;
+  const novoPreto = vencedor === 'preto' ? winners : nextTeam;
+  const newOrdem = remontarOrdemAposRotacao(novoBranco, novoPreto, filaProximos);
+
+  // Com times completos, a remontagem pela fila deve bater com os lados explícitos.
+  if (novoBranco.length === size && novoPreto.length === size) {
+    const pelaFila = montarTimesDaFila(newOrdem, size);
     return {
       ordemChegada: newOrdem,
-      timeBrancoIds: vencedor === 'branco' ? winners : [],
-      timePretoIds: vencedor === 'preto' ? winners : [],
+      timeBrancoIds: pelaFila.timeBrancoIds,
+      timePretoIds: pelaFila.timePretoIds,
       rotacionou: true,
     };
   }
 
-  const newOrdem =
-    vencedor === 'branco'
-      ? uniquePreserve([...winners, ...nextTeam, ...resto, ...losers])
-      : uniquePreserve([...nextTeam, ...winners, ...resto, ...losers]);
-
   return {
     ordemChegada: newOrdem,
-    timeBrancoIds: vencedor === 'branco' ? winners : nextTeam,
-    timePretoIds: vencedor === 'preto' ? winners : nextTeam,
+    timeBrancoIds: novoBranco,
+    timePretoIds: novoPreto,
     rotacionou: true,
   };
 }
@@ -101,10 +126,13 @@ export function rotacionarSaiOsDois(
   const novoPreto = waiting.slice(size, size * 2);
   const resto = waiting.slice(size * 2);
   const sairam = [...timeBrancoIds, ...timePretoIds];
+  const filaProximos = [...resto, ...sairam];
+  const newOrdem = remontarOrdemAposRotacao(novoBranco, novoPreto, filaProximos);
+  const pelaFila = montarTimesDaFila(newOrdem, size);
   return {
-    ordemChegada: uniquePreserve([...novoBranco, ...novoPreto, ...resto, ...sairam]),
-    timeBrancoIds: novoBranco,
-    timePretoIds: novoPreto,
+    ordemChegada: newOrdem,
+    timeBrancoIds: pelaFila.timeBrancoIds,
+    timePretoIds: pelaFila.timePretoIds,
     rotacionou: true,
     mensagem: 'Empate: os dois times saíram; entraram os próximos da fila.',
   };

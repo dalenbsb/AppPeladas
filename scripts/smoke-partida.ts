@@ -1,10 +1,11 @@
 /**
- * Smoke da Fase 5 — fim de partida, empate e fila (sem UI).
+ * Smoke da Fase 5 / fila do perdedor — fim de partida, empate e próximos times (sem UI).
  * Rodar: npm run smoke:partida
  */
 import {
   aplicarFimPartida,
   enviarAoFimDaFila,
+  remontarOrdemAposRotacao,
   rotacionarSaiOsDois,
   rotacionarVencedorFica,
   vencedorDaPartida,
@@ -15,6 +16,7 @@ import {
   formatCronometro,
   tempoExibidoMs,
 } from '../src/features/jogos/cronometro';
+import { montarProximosDaFila, montarTimesDaFila } from '../src/features/jogos/montarTimes';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -40,10 +42,45 @@ assert(deepEqual(win.timeBrancoIds, branco), 'vencedor fica');
 assert(deepEqual(win.timePretoIds, ['n1', 'n2', 'n3']), 'proximo time entra');
 assert(win.ordemChegada.slice(-3).join(',') === 'p1,p2,p3', 'perdedor no fim');
 
+// Perdedor aparece em "próximos times"; próxima partida remonta pela fila.
+const proximosAposWin = montarProximosDaFila(win.ordemChegada, 3, [
+  ...win.timeBrancoIds,
+  ...win.timePretoIds,
+]);
+assert(deepEqual(proximosAposWin.at(-1), preto), 'perdedor e bloco nos proximos');
+assert(deepEqual(proximosAposWin[0], ['n4', 'n5', 'n6']), 'resto da fila antes do perdedor');
+const remontada = montarTimesDaFila(win.ordemChegada, 3);
+assert(deepEqual(remontada.timeBrancoIds, win.timeBrancoIds), 'partida branco pela fila');
+assert(deepEqual(remontada.timePretoIds, win.timePretoIds), 'partida preto pela fila');
+
+// Sem time completo na fila: perdedor ainda vai aos próximos; adversário fica vazio.
+const winSemFila = rotacionarVencedorFica(
+  [...branco, ...preto, 'x1', 'x2'],
+  branco,
+  preto,
+  'preto',
+  3,
+);
+assert(deepEqual(winSemFila.timePretoIds, preto), 'vencedor preto fica sem proximo completo');
+assert(winSemFila.timeBrancoIds.length === 0, 'sem time parcial em campo');
+const proximosSemFila = montarProximosDaFila(winSemFila.ordemChegada, 3, [
+  ...winSemFila.timeBrancoIds,
+  ...winSemFila.timePretoIds,
+]);
+assert(proximosSemFila.flat().includes('x1'), 'espera parcial nos proximos');
+assert(proximosSemFila.flat().slice(-3).join(',') === 'b1,b2,b3', 'perdedor no fim dos proximos');
+assert(winSemFila.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'perdedor no fim da ordem');
+
+assert(
+  deepEqual(remontarOrdemAposRotacao(['a'], ['b'], ['c', 'd']), ['a', 'b', 'c', 'd']),
+  'ordem canonica',
+);
+
 const sai = rotacionarSaiOsDois(fila, branco, preto, 3);
 assert(sai.rotacionou, 'sai os dois com fila');
 assert(deepEqual(sai.timeBrancoIds, ['n1', 'n2', 'n3']), 'novo branco');
 assert(deepEqual(sai.timePretoIds, ['n4', 'n5', 'n6']), 'novo preto');
+assert(sai.ordemChegada.slice(-6).join(',') === 'b1,b2,b3,p1,p2,p3', 'sairam no fim da fila');
 
 const curto = rotacionarSaiOsDois(
   [...branco, ...preto, 'n1', 'n2', 'n3'],
@@ -65,6 +102,7 @@ const fimVitoria = aplicarFimPartida({
 });
 assert(fimVitoria.vencedor === 'branco', 'vencedor placar');
 assert(fimVitoria.rotacionou, 'rotaciona na vitoria');
+assert(fimVitoria.ordemChegada.slice(-3).join(',') === 'p1,p2,p3', 'aplicarFim perdedor no fim');
 
 const fimPenaltis = aplicarFimPartida({
   ordemChegada: fila,
@@ -90,6 +128,7 @@ const fimFica = aplicarFimPartida({
   ultimoVencedor: 'preto',
 });
 assert(deepEqual(fimFica.timePretoIds, preto), 'fica preto no ciclo');
+assert(fimFica.ordemChegada.slice(-3).join(',') === 'b1,b2,b3', 'empate fica: branco no fim');
 
 const moved = enviarAoFimDaFila(fila, branco, preto, 'b2');
 assert(!moved.timeBrancoIds.includes('b2'), 'vermelho sai do time');

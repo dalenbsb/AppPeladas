@@ -23,13 +23,36 @@ export function montarTimesDaFila(ordemChegada: string[], n: number): TimesMonta
   return { timeBrancoIds, timePretoIds, proximosTimes };
 }
 
-/** Próximos times a partir da fila inteira em blocos de N (sem “em campo”). */
-export function montarProximosDaFila(ordemChegada: string[], n: number, pularEmCampo = true): string[][] {
-  const size = Math.max(1, Math.floor(n) || 1);
-  const source = pularEmCampo ? ordemChegada.slice(size * 2) : ordemChegada;
+function chunkIds(ids: string[], size: number): string[][] {
   const blocos: string[][] = [];
-  for (let i = 0; i < source.length; i += size) {
-    blocos.push(source.slice(i, i + size));
+  for (let i = 0; i < ids.length; i += size) {
+    blocos.push(ids.slice(i, i + size));
   }
   return blocos;
+}
+
+/**
+ * Próximos times a partir da fila.
+ *
+ * - `true` (legado): pula os primeiros 2×N da ordem.
+ * - `false`: usa a fila inteira em blocos de N.
+ * - lista de IDs: exclui quem está em campo (preferido após rotação / vermelho).
+ */
+export function montarProximosDaFila(
+  ordemChegada: string[],
+  n: number,
+  pularOuEmCampo: boolean | Iterable<string> = true,
+): string[][] {
+  const size = Math.max(1, Math.floor(n) || 1);
+
+  if (typeof pularOuEmCampo !== 'boolean') {
+    const emCampo = new Set(pularOuEmCampo);
+    return chunkIds(
+      ordemChegada.filter((id) => !emCampo.has(id)),
+      size,
+    );
+  }
+
+  const source = pularOuEmCampo ? ordemChegada.slice(size * 2) : ordemChegada;
+  return chunkIds(source, size);
 }
