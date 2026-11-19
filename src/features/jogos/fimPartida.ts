@@ -213,6 +213,20 @@ export function vencedorDaPartida(
   return placarBranco > placarPreto ? 'branco' : 'preto';
 }
 
+/**
+ * Restaura o lado em vantagem no ciclo a partir do histórico (mais recente primeiro).
+ * Empates são ignorados — a vantagem vem da última vitória de fato.
+ */
+export function ultimoVencedorDoCiclo(
+  partidasMaisRecentePrimeiro: Array<{ placarBranco: number; placarPreto: number }>,
+): TimeSide | null {
+  for (const p of partidasMaisRecentePrimeiro) {
+    const v = vencedorDaPartida(p.placarBranco, p.placarPreto);
+    if (v) return v;
+  }
+  return null;
+}
+
 /** Move atleta para o fim da ordem e remove dos times em campo. */
 export function enviarAoFimDaFila(
   ordemChegada: string[],
