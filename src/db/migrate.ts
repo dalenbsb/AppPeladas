@@ -3,11 +3,16 @@ import {
   MIGRATION_002_PARTIDA_TEMPO,
   MIGRATION_002_VERSION,
 } from './migrations/002_partida_tempo';
+import {
+  MIGRATION_003_PARTIDA_ELENCO,
+  MIGRATION_003_VERSION,
+} from './migrations/003_partida_elenco';
 import type { SqlExecutor } from './sqlExecutor';
 
 const MIGRATIONS: { version: number; sql: string }[] = [
   { version: MIGRATION_001_VERSION, sql: MIGRATION_001_INITIAL },
   { version: MIGRATION_002_VERSION, sql: MIGRATION_002_PARTIDA_TEMPO },
+  { version: MIGRATION_003_VERSION, sql: MIGRATION_003_PARTIDA_ELENCO },
 ];
 
 export async function migrate(db: SqlExecutor): Promise<void> {

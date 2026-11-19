@@ -171,7 +171,16 @@ export function usePartidaLive() {
       if (!p || !s || !pel || p.encerradaEm) return;
       endingRef.current = true;
       try {
+        const n = pel.jogadoresPorEquipe;
+        const times = resolveTimes(s, n);
         const tempo = tempoAtualMs();
+        const elencoPatch =
+          p.timeBrancoIds.length === 0 && p.timePretoIds.length === 0
+            ? {
+                timeBrancoIds: times.timeBrancoIds,
+                timePretoIds: times.timePretoIds,
+              }
+            : {};
         const encerrada = await repos.partidas.update(p.id, {
           placarBranco: p.placarBranco,
           placarPreto: p.placarPreto,
@@ -179,13 +188,12 @@ export function usePartidaLive() {
           pausada: true,
           encerradaEm: nowIso(),
           motivoFim: motivo,
+          ...elencoPatch,
         });
         setPartida(encerrada);
         setSegmentStartedAt(null);
         setAmarelosAtivos([]);
 
-        const n = pel.jogadoresPorEquipe;
-        const times = resolveTimes(s, n);
         const fim = aplicarFimPartida({
           ordemChegada: s.ordemChegada,
           timeBrancoIds: times.timeBrancoIds,
@@ -263,6 +271,8 @@ export function usePartidaLive() {
         placarBranco: 0,
         placarPreto: 0,
         tempoDecorridoMs: 0,
+        timeBrancoIds: times.timeBrancoIds,
+        timePretoIds: times.timePretoIds,
         iniciadaEm: nowIso(),
         pausada: false,
         encerradaEm: null,
@@ -273,9 +283,20 @@ export function usePartidaLive() {
       current = await repos.partidas.update(current.id, {
         iniciadaEm: nowIso(),
         pausada: false,
+        timeBrancoIds: times.timeBrancoIds,
+        timePretoIds: times.timePretoIds,
       });
     } else if (current.pausada) {
       current = await repos.partidas.update(current.id, { pausada: false });
+    } else if (
+      current.timeBrancoIds.length === 0 &&
+      current.timePretoIds.length === 0
+    ) {
+      // Partidas antigas sem snapshot: grava elenco na retomada.
+      current = await repos.partidas.update(current.id, {
+        timeBrancoIds: times.timeBrancoIds,
+        timePretoIds: times.timePretoIds,
+      });
     }
 
     const updatedSessao = await repos.sessoes.update(sessao.id, {

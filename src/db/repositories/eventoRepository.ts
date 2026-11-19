@@ -15,6 +15,19 @@ export class EventoRepository {
     return rows.map(mapEvento);
   }
 
+  /** Eventos de todas as partidas de uma pelada (para agregações). */
+  async listByPelada(peladaId: string): Promise<EventoPartida[]> {
+    const rows = await this.db.getAll<EventoRow>(
+      `SELECT e.*
+       FROM eventos_partida e
+       INNER JOIN partidas p ON p.id = e.partida_id
+       WHERE p.pelada_id = ?
+       ORDER BY e.created_at ASC`,
+      [peladaId],
+    );
+    return rows.map(mapEvento);
+  }
+
   async listAll(): Promise<EventoPartida[]> {
     const rows = await this.db.getAll<EventoRow>(
       'SELECT * FROM eventos_partida ORDER BY created_at ASC',

@@ -68,6 +68,9 @@ export interface Partida {
   placarPreto: number;
   /** Tempo acumulado do cronômetro (ms), atualizado ao pausar/encerrar. */
   tempoDecorridoMs: number;
+  /** Snapshot do elenco em campo ao iniciar (para estatísticas). */
+  timeBrancoIds: string[];
+  timePretoIds: string[];
   iniciadaEm: string | null;
   pausada: boolean;
   encerradaEm: string | null;
@@ -135,10 +138,16 @@ export type NewSessaoJogo = Omit<SessaoJogo, 'id' | 'createdAt' | 'updatedAt'> &
   updatedAt?: string;
 };
 
-export type NewPartida = Omit<Partida, 'id' | 'createdAt' | 'updatedAt'> & {
+export type NewPartida = Omit<
+  Partida,
+  'id' | 'createdAt' | 'updatedAt' | 'tempoDecorridoMs' | 'timeBrancoIds' | 'timePretoIds'
+> & {
   id?: string;
   createdAt?: string;
   updatedAt?: string;
+  tempoDecorridoMs?: number;
+  timeBrancoIds?: string[];
+  timePretoIds?: string[];
 };
 
 export type NewEventoPartida = Omit<EventoPartida, 'id' | 'createdAt'> & {

@@ -63,12 +63,24 @@ export interface PartidaRow {
   placar_branco: number;
   placar_preto: number;
   tempo_decorrido_ms?: number | null;
+  time_branco_ids_json?: string | null;
+  time_preto_ids_json?: string | null;
   iniciada_em: string | null;
   pausada: number;
   encerrada_em: string | null;
   motivo_fim: string | null;
   created_at: string;
   updated_at: string;
+}
+
+function parseIdJson(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 export interface EventoRow {
@@ -136,6 +148,8 @@ export function mapPartida(row: PartidaRow): Partida {
     placarBranco: row.placar_branco,
     placarPreto: row.placar_preto,
     tempoDecorridoMs: row.tempo_decorrido_ms ?? 0,
+    timeBrancoIds: parseIdJson(row.time_branco_ids_json),
+    timePretoIds: parseIdJson(row.time_preto_ids_json),
     iniciadaEm: row.iniciada_em,
     pausada: Boolean(row.pausada),
     encerradaEm: row.encerrada_em,
