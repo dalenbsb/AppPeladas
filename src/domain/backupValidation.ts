@@ -114,6 +114,13 @@ function validatePartida(item: unknown, index: number): Partida {
       `partidas[${index}].tempoDecorridoMs inválido`,
     );
   }
+  // Backups anteriores à Fase 6 podem não ter elenco.
+  if (item.timeBrancoIds !== undefined) {
+    assert(isStringArray(item.timeBrancoIds), `partidas[${index}].timeBrancoIds inválido`);
+  }
+  if (item.timePretoIds !== undefined) {
+    assert(isStringArray(item.timePretoIds), `partidas[${index}].timePretoIds inválido`);
+  }
   assert(isStringOrNull(item.iniciadaEm), `partidas[${index}].iniciadaEm inválido`);
   assert(isBoolean(item.pausada), `partidas[${index}].pausada inválido`);
   assert(isStringOrNull(item.encerradaEm), `partidas[${index}].encerradaEm inválido`);
@@ -127,6 +134,8 @@ function validatePartida(item: unknown, index: number): Partida {
     ...(item as unknown as Partida),
     tempoDecorridoMs:
       typeof item.tempoDecorridoMs === 'number' ? item.tempoDecorridoMs : 0,
+    timeBrancoIds: isStringArray(item.timeBrancoIds) ? item.timeBrancoIds : [],
+    timePretoIds: isStringArray(item.timePretoIds) ? item.timePretoIds : [],
   };
 }
 

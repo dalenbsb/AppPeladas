@@ -57,6 +57,7 @@
     "smoke": "tsx --experimental-sqlite scripts/smoke-backup.ts",
     "smoke:sorteio": "tsx scripts/smoke-sorteio.ts",
     "smoke:partida": "tsx scripts/smoke-partida.ts",
+    "smoke:estatisticas": "tsx scripts/smoke-estatisticas.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

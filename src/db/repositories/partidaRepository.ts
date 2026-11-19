@@ -55,11 +55,14 @@ export class PartidaRepository {
     const createdAt = input.createdAt ?? now;
     const updatedAt = input.updatedAt ?? now;
     const tempoDecorridoMs = input.tempoDecorridoMs ?? 0;
+    const timeBrancoIds = input.timeBrancoIds ?? [];
+    const timePretoIds = input.timePretoIds ?? [];
     await this.db.run(
       `INSERT INTO partidas (
         id, pelada_id, sessao_id, placar_branco, placar_preto, tempo_decorrido_ms,
+        time_branco_ids_json, time_preto_ids_json,
         iniciada_em, pausada, encerrada_em, motivo_fim, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.peladaId,
@@ -67,6 +70,8 @@ export class PartidaRepository {
         input.placarBranco,
         input.placarPreto,
         tempoDecorridoMs,
+        JSON.stringify(timeBrancoIds),
+        JSON.stringify(timePretoIds),
         input.iniciadaEm,
         input.pausada ? 1 : 0,
         input.encerradaEm,
@@ -97,7 +102,8 @@ export class PartidaRepository {
     await this.db.run(
       `UPDATE partidas SET
         pelada_id = ?, sessao_id = ?, placar_branco = ?, placar_preto = ?,
-        tempo_decorrido_ms = ?, iniciada_em = ?, pausada = ?, encerrada_em = ?,
+        tempo_decorrido_ms = ?, time_branco_ids_json = ?, time_preto_ids_json = ?,
+        iniciada_em = ?, pausada = ?, encerrada_em = ?,
         motivo_fim = ?, updated_at = ?
       WHERE id = ?`,
       [
@@ -106,6 +112,8 @@ export class PartidaRepository {
         next.placarBranco,
         next.placarPreto,
         next.tempoDecorridoMs,
+        JSON.stringify(next.timeBrancoIds),
+        JSON.stringify(next.timePretoIds),
         next.iniciadaEm,
         next.pausada ? 1 : 0,
         next.encerradaEm,
