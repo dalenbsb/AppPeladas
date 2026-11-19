@@ -25,22 +25,48 @@ export class PartidaRepository {
     return row ? mapPartida(row) : null;
   }
 
+  /** Partida em andamento (não encerrada) da sessão, se houver. */
+  async getOpenBySessao(sessaoId: string): Promise<Partida | null> {
+    const row = await this.db.getFirst<PartidaRow>(
+      `SELECT * FROM partidas
+       WHERE sessao_id = ? AND encerrada_em IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [sessaoId],
+    );
+    return row ? mapPartida(row) : null;
+  }
+
+  /** Última partida encerrada da sessão (para regra “fica quem está ganhando”). */
+  async getLastFinishedBySessao(sessaoId: string): Promise<Partida | null> {
+    const row = await this.db.getFirst<PartidaRow>(
+      `SELECT * FROM partidas
+       WHERE sessao_id = ? AND encerrada_em IS NOT NULL
+       ORDER BY encerrada_em DESC
+       LIMIT 1`,
+      [sessaoId],
+    );
+    return row ? mapPartida(row) : null;
+  }
+
   async create(input: NewPartida): Promise<Partida> {
     const id = input.id ?? createId();
     const now = nowIso();
     const createdAt = input.createdAt ?? now;
     const updatedAt = input.updatedAt ?? now;
+    const tempoDecorridoMs = input.tempoDecorridoMs ?? 0;
     await this.db.run(
       `INSERT INTO partidas (
-        id, pelada_id, sessao_id, placar_branco, placar_preto,
+        id, pelada_id, sessao_id, placar_branco, placar_preto, tempo_decorrido_ms,
         iniciada_em, pausada, encerrada_em, motivo_fim, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.peladaId,
         input.sessaoId,
         input.placarBranco,
         input.placarPreto,
+        tempoDecorridoMs,
         input.iniciadaEm,
         input.pausada ? 1 : 0,
         input.encerradaEm,
@@ -71,13 +97,15 @@ export class PartidaRepository {
     await this.db.run(
       `UPDATE partidas SET
         pelada_id = ?, sessao_id = ?, placar_branco = ?, placar_preto = ?,
-        iniciada_em = ?, pausada = ?, encerrada_em = ?, motivo_fim = ?, updated_at = ?
+        tempo_decorrido_ms = ?, iniciada_em = ?, pausada = ?, encerrada_em = ?,
+        motivo_fim = ?, updated_at = ?
       WHERE id = ?`,
       [
         next.peladaId,
         next.sessaoId,
         next.placarBranco,
         next.placarPreto,
+        next.tempoDecorridoMs,
         next.iniciadaEm,
         next.pausada ? 1 : 0,
         next.encerradaEm,

@@ -1,15 +1,48 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Tabs, useLocalSearchParams } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PartidaLiveProvider } from '@/features/jogos/PartidaLiveContext';
 import { PlacarHeader } from '@/features/jogos/PlacarHeader';
+import {
+  selectCronometroLabel,
+  selectPlacar,
+  usePartidaLiveStore,
+} from '@/features/jogos/partidaLiveStore';
 import { useJogosBootstrap } from '@/features/jogos/useJogosSession';
 import { colors } from '@/theme/colors';
+
+function LivePlacarHeader({
+  pelada,
+}: {
+  pelada: ReturnType<typeof useJogosBootstrap>['pelada'];
+}) {
+  const placar = usePartidaLiveStore(selectPlacar);
+  const cronometro = usePartidaLiveStore(selectCronometroLabel);
+  usePartidaLiveStore((s) => s.nowMs);
+
+  return (
+    <PlacarHeader
+      pelada={pelada}
+      placarBranco={placar.placarBranco}
+      placarPreto={placar.placarPreto}
+      cronometro={cronometro}
+    />
+  );
+}
 
 export default function JogosLayout() {
   const { peladaId } = useLocalSearchParams<{ peladaId: string }>();
   const { loading, error, reload, pelada } = useJogosBootstrap(peladaId);
+  const resetLive = usePartidaLiveStore((s) => s.reset);
+
+  useEffect(() => {
+    return () => {
+      resetLive();
+    };
+  }, [peladaId, resetLive]);
 
   if (loading && !pelada) {
     return (
@@ -32,46 +65,48 @@ export default function JogosLayout() {
 
   return (
     <GestureHandlerRootView style={styles.flex}>
-      <SafeAreaView style={styles.flex} edges={['bottom']}>
-        <PlacarHeader pelada={pelada} />
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarActiveTintColor: colors.brand,
-            tabBarInactiveTintColor: colors.textMuted,
-            tabBarStyle: {
-              backgroundColor: colors.surface,
-              borderTopColor: colors.border,
-            },
-            tabBarLabelStyle: {
-              fontSize: 11,
-              fontWeight: '700',
-            },
-          }}
-        >
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: 'Ordem',
-              tabBarAccessibilityLabel: 'Ordem de chegada',
+      <PartidaLiveProvider>
+        <SafeAreaView style={styles.flex} edges={['bottom']}>
+          <LivePlacarHeader pelada={pelada} />
+          <Tabs
+            screenOptions={{
+              headerShown: false,
+              tabBarActiveTintColor: colors.brand,
+              tabBarInactiveTintColor: colors.textMuted,
+              tabBarStyle: {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+              },
+              tabBarLabelStyle: {
+                fontSize: 11,
+                fontWeight: '700',
+              },
             }}
-          />
-          <Tabs.Screen
-            name="partida"
-            options={{
-              title: 'Partida',
-              tabBarAccessibilityLabel: 'Partida',
-            }}
-          />
-          <Tabs.Screen
-            name="proximos"
-            options={{
-              title: 'Próximos',
-              tabBarAccessibilityLabel: 'Próximos times',
-            }}
-          />
-        </Tabs>
-      </SafeAreaView>
+          >
+            <Tabs.Screen
+              name="index"
+              options={{
+                title: 'Ordem',
+                tabBarAccessibilityLabel: 'Ordem de chegada',
+              }}
+            />
+            <Tabs.Screen
+              name="partida"
+              options={{
+                title: 'Partida',
+                tabBarAccessibilityLabel: 'Partida',
+              }}
+            />
+            <Tabs.Screen
+              name="proximos"
+              options={{
+                title: 'Próximos',
+                tabBarAccessibilityLabel: 'Próximos times',
+              }}
+            />
+          </Tabs>
+        </SafeAreaView>
+      </PartidaLiveProvider>
     </GestureHandlerRootView>
   );
 }

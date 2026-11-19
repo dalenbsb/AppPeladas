@@ -62,6 +62,7 @@ export interface PartidaRow {
   sessao_id: string | null;
   placar_branco: number;
   placar_preto: number;
+  tempo_decorrido_ms?: number | null;
   iniciada_em: string | null;
   pausada: number;
   encerrada_em: string | null;
@@ -134,6 +135,7 @@ export function mapPartida(row: PartidaRow): Partida {
     sessaoId: row.sessao_id,
     placarBranco: row.placar_branco,
     placarPreto: row.placar_preto,
+    tempoDecorridoMs: row.tempo_decorrido_ms ?? 0,
     iniciadaEm: row.iniciada_em,
     pausada: Boolean(row.pausada),
     encerradaEm: row.encerrada_em,

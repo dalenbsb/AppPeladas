@@ -69,6 +69,7 @@ async function main() {
     sessaoId: sessao.id,
     placarBranco: 1,
     placarPreto: 0,
+    tempoDecorridoMs: 0,
     iniciadaEm: new Date().toISOString(),
     pausada: false,
     encerradaEm: null,
