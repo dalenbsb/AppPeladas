@@ -17,6 +17,7 @@ export default function PeladaLayout() {
       <Stack.Screen name="atletas/novo" options={{ title: 'Novo atleta' }} />
       <Stack.Screen name="atletas/[atletaId]" options={{ title: 'Editar atleta' }} />
       <Stack.Screen name="jogos" options={{ title: 'Jogos', headerShown: true }} />
+      <Stack.Screen name="historico" options={{ title: 'Histórico de jogos' }} />
       <Stack.Screen name="estatisticas" options={{ title: 'Estatísticas' }} />
       <Stack.Screen name="configuracoes" options={{ title: 'Configurações' }} />
     </Stack>

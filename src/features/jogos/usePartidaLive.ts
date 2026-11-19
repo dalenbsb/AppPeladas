@@ -23,7 +23,11 @@ import {
 import { useJogosStore } from './jogosStore';
 
 const KEEP_AWAKE_TAG = 'apppeladas-partida';
-const AMARELO_MS = 2 * 60 * 1000;
+
+function amareloSuspensaoMs(minutos: number): number | null {
+  if (!Number.isFinite(minutos) || minutos <= 0) return null;
+  return Math.min(5, Math.max(0, Math.trunc(minutos))) * 60 * 1000;
+}
 
 function countAmarelosNaPartida(
   eventos: { tipo: string; atletaId: string }[],
@@ -362,6 +366,8 @@ export function usePartidaLive() {
         tempoDecorridoMs: 0,
         timeBrancoIds: times.timeBrancoIds,
         timePretoIds: times.timePretoIds,
+        corTime1: pelada.corTime1,
+        corTime2: pelada.corTime2,
         iniciadaEm: nowIso(),
         pausada: false,
         encerradaEm: null,
@@ -374,6 +380,8 @@ export function usePartidaLive() {
         pausada: false,
         timeBrancoIds: times.timeBrancoIds,
         timePretoIds: times.timePretoIds,
+        corTime1: pelada.corTime1,
+        corTime2: pelada.corTime2,
       });
     } else if (current.pausada) {
       current = await repos.partidas.update(current.id, { pausada: false });
@@ -385,6 +393,8 @@ export function usePartidaLive() {
       current = await repos.partidas.update(current.id, {
         timeBrancoIds: times.timeBrancoIds,
         timePretoIds: times.timePretoIds,
+        corTime1: pelada.corTime1,
+        corTime2: pelada.corTime2,
       });
     }
 
@@ -470,12 +480,21 @@ export function usePartidaLive() {
       }
       const updated = await repos.partidas.update(p.id, { placarBranco, placarPreto });
       setPartida(updated);
-      const eventos = await repos.eventos.listByPartida(p.id);
-      setEventos(eventos);
+      // Qualquer gol libera quem está cumprindo suspensão de amarelo (persistente).
+      await repos.eventos.clearAmareloSuspensaoAtiva(p.id);
+      setAmarelosAtivos([]);
+      setEventos(await repos.eventos.listByPartida(p.id));
       void gol;
       await maybeEndByGoals(placarBranco, placarPreto);
     },
-    [maybeEndByGoals, repos.eventos, repos.partidas, setEventos, setPartida],
+    [
+      maybeEndByGoals,
+      repos.eventos,
+      repos.partidas,
+      setAmarelosAtivos,
+      setEventos,
+      setPartida,
+    ],
   );
 
   const marcarGolContra = useCallback(
@@ -505,10 +524,19 @@ export function usePartidaLive() {
       });
       const updated = await repos.partidas.update(p.id, { placarBranco, placarPreto });
       setPartida(updated);
+      await repos.eventos.clearAmareloSuspensaoAtiva(p.id);
+      setAmarelosAtivos([]);
       setEventos(await repos.eventos.listByPartida(p.id));
       await maybeEndByGoals(placarBranco, placarPreto);
     },
-    [maybeEndByGoals, repos.eventos, repos.partidas, setEventos, setPartida],
+    [
+      maybeEndByGoals,
+      repos.eventos,
+      repos.partidas,
+      setAmarelosAtivos,
+      setEventos,
+      setPartida,
+    ],
   );
 
   const syncElencoPartida = useCallback(
@@ -539,9 +567,11 @@ export function usePartidaLive() {
         usePartidaLiveStore.getState().eventos,
         atletaId,
       );
+      const suspensaoMs =
+        jaAmarelos === 0 ? amareloSuspensaoMs(pel.amareloMinutosFora) : null;
       const retornaEm =
-        pel.amareloDoisMinutos && jaAmarelos === 0
-          ? new Date(Date.now() + AMARELO_MS).toISOString()
+        suspensaoMs != null
+          ? new Date(Date.now() + suspensaoMs).toISOString()
           : undefined;
       await repos.eventos.create({
         partidaId: p.id,

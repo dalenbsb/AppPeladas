@@ -10,7 +10,8 @@ type Props = {
   visible: boolean;
   atleta: Atleta | null;
   colegas: Atleta[];
-  amareloDoisMinutos: boolean;
+  /** Minutos de suspensão do amarelo (0 = só marca o cartão). */
+  amareloMinutosFora: number;
   /** Partida rodando: gols/cartões. Antes do início: só substituição/remoção. */
   partidaEmAndamento: boolean;
   /** Há alguém na lista de próximos para entrar. */
@@ -28,7 +29,7 @@ export function PlayerActionModal({
   visible,
   atleta,
   colegas,
-  amareloDoisMinutos,
+  amareloMinutosFora,
   partidaEmAndamento,
   temProximo,
   onClose,
@@ -47,7 +48,7 @@ export function PlayerActionModal({
         key={atleta.id}
         atleta={atleta}
         colegas={colegas}
-        amareloDoisMinutos={amareloDoisMinutos}
+        amareloMinutosFora={amareloMinutosFora}
         partidaEmAndamento={partidaEmAndamento}
         temProximo={temProximo}
         onClose={onClose}
@@ -65,7 +66,7 @@ export function PlayerActionModal({
 function PlayerActionSheet({
   atleta,
   colegas,
-  amareloDoisMinutos,
+  amareloMinutosFora,
   partidaEmAndamento,
   temProximo,
   onClose,
@@ -124,7 +125,9 @@ function PlayerActionSheet({
                 />
                 <Action
                   label={
-                    amareloDoisMinutos ? 'Cartão amarelo (2 min fora)' : 'Cartão amarelo'
+                    amareloMinutosFora > 0
+                      ? `Cartão amarelo (${amareloMinutosFora} min fora)`
+                      : 'Cartão amarelo'
                   }
                   disabled={busy}
                   onPress={() => void run(() => onAmarelo(atleta.id))}

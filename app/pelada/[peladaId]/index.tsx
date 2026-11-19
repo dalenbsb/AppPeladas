@@ -10,6 +10,11 @@ const HUB_LINKS = [
   { key: 'atletas', title: 'Atletas', subtitle: 'Cadastro dos peladeiros' },
   { key: 'jogos', title: 'Jogos', subtitle: 'Ordem, partida e próximos times' },
   {
+    key: 'historico',
+    title: 'Histórico de jogos',
+    subtitle: 'Partidas encerradas filtradas por dia',
+  },
+  {
     key: 'estatisticas',
     title: 'Estatísticas',
     subtitle: 'Totais, gols, assistências e cartões',

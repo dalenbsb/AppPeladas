@@ -40,7 +40,9 @@ async function main() {
     criteriosSorteio: ['ordem_chegada'],
     regraEmpate: 'penaltis',
     telaSempreLigada: true,
-    amareloDoisMinutos: false,
+    amareloMinutosFora: 0,
+    corTime1: '#FFFFFF',
+    corTime2: '#111111',
   });
 
   const atleta = await repos.atletas.create({

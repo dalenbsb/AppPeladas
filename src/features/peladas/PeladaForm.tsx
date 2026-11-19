@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { CheckboxRow } from '@/components/CheckboxRow';
+import { ColorSwatchPicker } from '@/components/ColorSwatchPicker';
 import { NumberSelect } from '@/components/NumberSelect';
 import { RadioGroup } from '@/components/RadioGroup';
 import type { CriterioSorteio } from '@/domain/types';
@@ -21,6 +22,7 @@ import {
   REGRA_EMPATE_LABELS,
   REGRA_EMPATE_OPTIONS,
 } from './labels';
+import { TIME_UI_LABELS } from './teamLabels';
 
 type PeladaFormProps = {
   initialValues: PeladaFormValues;
@@ -151,17 +153,43 @@ export function PeladaForm({
         onChange={(regraEmpate) => patch({ regraEmpate })}
       />
 
+      <Text style={styles.section}>Cores das camisas</Text>
+      <Text style={styles.hint}>
+        {TIME_UI_LABELS.branco} e {TIME_UI_LABELS.preto} precisam de cores diferentes.
+      </Text>
+      <ColorSwatchPicker
+        label={`Cor do ${TIME_UI_LABELS.branco}`}
+        value={values.corTime1}
+        blockedColor={values.corTime2}
+        onChange={(corTime1) => patch({ corTime1 })}
+      />
+      <ColorSwatchPicker
+        label={`Cor do ${TIME_UI_LABELS.preto}`}
+        value={values.corTime2}
+        blockedColor={values.corTime1}
+        onChange={(corTime2) => patch({ corTime2 })}
+      />
+
       <Text style={styles.section}>Outras opções</Text>
       <CheckboxRow
         label="Tela da partida sempre ligada"
         checked={values.telaSempreLigada}
         onChange={(telaSempreLigada) => patch({ telaSempreLigada })}
       />
-      <CheckboxRow
-        label="Cartão amarelo: jogador fica 2 minutos fora"
-        checked={values.amareloDoisMinutos}
-        onChange={(amareloDoisMinutos) => patch({ amareloDoisMinutos })}
+      <NumberSelect
+        label="Cartão amarelo: jogador fica fora do jogo"
+        value={values.amareloMinutosFora}
+        min={0}
+        max={5}
+        suffix="min"
+        onChange={(amareloMinutosFora) => {
+          if (amareloMinutosFora != null) patch({ amareloMinutosFora });
+        }}
       />
+      <Text style={styles.hint}>
+        0 min = só registra o cartão, sem tempo de suspensão. Qualquer gol libera quem está
+        cumprindo amarelo.
+      </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 

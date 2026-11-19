@@ -13,7 +13,7 @@ export function formatCronometro(ms: number): string {
   return `${mm}:${ss}`;
 }
 
-/** Contagem regressiva curta (amarelo 2 min). */
+/** Contagem regressiva curta (suspensão de amarelo). */
 export function formatCountdown(msRestante: number): string {
   const totalSec = Math.max(0, Math.ceil(msRestante / 1000));
   const minutes = Math.floor(totalSec / 60);
