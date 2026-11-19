@@ -39,3 +39,25 @@ export function tempoExibidoMs(
   if (!rodando || segmentStartedAt == null) return Math.max(0, tempoDecorridoMs);
   return Math.max(0, tempoDecorridoMs + (now - segmentStartedAt));
 }
+
+/**
+ * Ao recarregar uma partida aberta: se o mesmo jogo já está rodando na UI,
+ * preserva `segmentStartedAt` para não zerar o cronômetro.
+ * (Ex.: segundo amarelo / vermelho atualiza a sessão e pode re-disparar load.)
+ */
+export function segmentStartedAtAposReload(opts: {
+  partidaId: string;
+  rodando: boolean;
+  prevPartidaId: string | null | undefined;
+  prevSegmentStartedAt: number | null;
+  now?: number;
+}): number | null {
+  if (!opts.rodando) return null;
+  if (
+    opts.prevPartidaId === opts.partidaId &&
+    opts.prevSegmentStartedAt != null
+  ) {
+    return opts.prevSegmentStartedAt;
+  }
+  return opts.now ?? Date.now();
+}

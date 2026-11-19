@@ -20,6 +20,7 @@ import {
   duracaoLimiteMs,
   formatCountdown,
   formatCronometro,
+  segmentStartedAtAposReload,
   tempoExibidoMs,
 } from '../src/features/jogos/cronometro';
 import { montarProximosDaFila, montarTimesDaFila } from '../src/features/jogos/montarTimes';
@@ -38,6 +39,42 @@ assert(formatCountdown(90_000) === '1:30', 'countdown');
 assert(duracaoLimiteMs(7) === 7 * 60 * 1000, 'duracao');
 assert(tempoExibidoMs(1000, false, null) === 1000, 'pausado');
 assert(tempoExibidoMs(1000, true, 10_000, 12_000) === 3000, 'rodando');
+
+// Reload da mesma partida em andamento (ex.: segundo amarelo → setSessao) não zera o relógio.
+const segAntes = 50_000;
+assert(
+  segmentStartedAtAposReload({
+    partidaId: 'p1',
+    rodando: true,
+    prevPartidaId: 'p1',
+    prevSegmentStartedAt: segAntes,
+    now: 90_000,
+  }) === segAntes,
+  'reload mesma partida preserva segmento',
+);
+assert(
+  tempoExibidoMs(0, true, segAntes, 90_000) === 40_000,
+  'tempo continua após reload sem reset de segmento',
+);
+assert(
+  segmentStartedAtAposReload({
+    partidaId: 'p1',
+    rodando: true,
+    prevPartidaId: null,
+    prevSegmentStartedAt: null,
+    now: 90_000,
+  }) === 90_000,
+  'primeiro load inicia segmento',
+);
+assert(
+  segmentStartedAtAposReload({
+    partidaId: 'p1',
+    rodando: false,
+    prevPartidaId: 'p1',
+    prevSegmentStartedAt: segAntes,
+  }) === null,
+  'pausada/encerrada limpa segmento',
+);
 
 const branco = ['b1', 'b2', 'b3'];
 const preto = ['p1', 'p2', 'p3'];
