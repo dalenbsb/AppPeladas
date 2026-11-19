@@ -63,7 +63,7 @@ export default function ConfiguracoesScreen() {
     <PeladaForm
       key={pelada.updatedAt}
       initialValues={peladaToFormValues(pelada)}
-      submitLabel="Salvar"
+      submitLabel="Salvar parâmetros"
       onSubmit={async (values) => {
         await repos.peladas.update(pelada.id, values);
         bump();

@@ -6,6 +6,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import { Pressable } from 'react-native-gesture-handler';
 
+import { EmptyState } from '@/components/EmptyState';
 import type { Atleta } from '@/domain/types';
 import { AddPeladeiroModal } from '@/features/jogos/AddPeladeiroModal';
 import { AtletaFilaRow } from '@/features/jogos/AtletaFilaRow';
@@ -105,12 +106,10 @@ export default function OrdemChegadaScreen() {
         containerStyle={styles.flex}
         contentContainerStyle={fila.length === 0 ? styles.emptyContainer : styles.list}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Fila vazia</Text>
-            <Text style={styles.emptyBody}>
-              Toque no + para adicionar peladeiros à ordem de chegada.
-            </Text>
-          </View>
+          <EmptyState
+            title="Fila vazia"
+            body="Toque no + para adicionar peladeiros à ordem de chegada."
+          />
         }
         renderItem={renderItem}
       />
@@ -175,19 +174,5 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-  },
-  empty: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.brand,
-  },
-  emptyBody: {
-    fontSize: 15,
-    color: colors.textMuted,
-    textAlign: 'center',
   },
 });

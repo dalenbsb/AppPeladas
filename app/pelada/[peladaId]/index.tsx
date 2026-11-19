@@ -17,7 +17,7 @@ const HUB_LINKS = [
   {
     key: 'configuracoes',
     title: 'Configurações',
-    subtitle: 'Parâmetros e backup JSON',
+    subtitle: 'Parâmetros, exportar e importar JSON',
   },
 ] as const;
 
