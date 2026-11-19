@@ -9,6 +9,12 @@ export type AmareloAtivo = {
   retornaEm: string; // ISO
 };
 
+/** Pós-partida: vencedor incompleto aguardando escolha na lista de próximos. */
+export type PendentePreencherVaga = {
+  ladoQueFica: TimeSide;
+  mensagem: string;
+};
+
 type PartidaLiveState = {
   partida: Partida | null;
   eventos: EventoPartida[];
@@ -19,12 +25,15 @@ type PartidaLiveState = {
   nowMs: number;
   ultimoVencedor: TimeSide | null;
   mensagemFim: string | null;
+  /** Bloqueia montagem do adversário até preencher a última vaga do time que ficou. */
+  pendentePreencherVaga: PendentePreencherVaga | null;
   setPartida: (partida: Partida | null) => void;
   setEventos: (eventos: EventoPartida[]) => void;
   setSegmentStartedAt: (at: number | null) => void;
   setAmarelosAtivos: (items: AmareloAtivo[]) => void;
   setUltimoVencedor: (side: TimeSide | null) => void;
   setMensagemFim: (msg: string | null) => void;
+  setPendentePreencherVaga: (pendente: PendentePreencherVaga | null) => void;
   tick: (now?: number) => void;
   reset: () => void;
 };
@@ -37,6 +46,7 @@ const initial = {
   nowMs: Date.now(),
   ultimoVencedor: null as TimeSide | null,
   mensagemFim: null as string | null,
+  pendentePreencherVaga: null as PendentePreencherVaga | null,
 };
 
 export const usePartidaLiveStore = create<PartidaLiveState>((set) => ({
@@ -47,6 +57,7 @@ export const usePartidaLiveStore = create<PartidaLiveState>((set) => ({
   setAmarelosAtivos: (amarelosAtivos) => set({ amarelosAtivos }),
   setUltimoVencedor: (ultimoVencedor) => set({ ultimoVencedor }),
   setMensagemFim: (mensagemFim) => set({ mensagemFim }),
+  setPendentePreencherVaga: (pendentePreencherVaga) => set({ pendentePreencherVaga }),
   tick: (now = Date.now()) => set({ nowMs: now }),
   reset: () => set({ ...initial, nowMs: Date.now() }),
 }));

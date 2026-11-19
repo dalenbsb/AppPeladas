@@ -19,6 +19,7 @@ import {
 } from '@/features/jogos/partidaLiveStore';
 import { usePartidaLiveApi } from '@/features/jogos/PartidaLiveContext';
 import { PlayerActionModal } from '@/features/jogos/PlayerActionModal';
+import { PreencherVagaModal } from '@/features/jogos/PreencherVagaModal';
 import { useJogosSession } from '@/features/jogos/useJogosSession';
 import { REGRA_EMPATE_LABELS } from '@/features/peladas/labels';
 import { colors } from '@/theme/colors';
@@ -94,6 +95,7 @@ export default function PartidaScreen() {
   const {
     partida,
     amarelosAtivos,
+    pendentePreencherVaga,
     iniciar,
     pausar,
     marcarGol,
@@ -102,6 +104,7 @@ export default function PartidaScreen() {
     marcarVermelho,
     removerJogador,
     substituirJogador,
+    confirmarPreenchimentoVaga,
     encerrarManual,
   } = usePartidaLiveApi();
 
@@ -113,6 +116,8 @@ export default function PartidaScreen() {
   const nowMs = usePartidaLiveStore((s) => s.nowMs);
 
   const [selected, setSelected] = useState<Atleta | null>(null);
+  const [fillBusy, setFillBusy] = useState(false);
+  const [fillError, setFillError] = useState<string | null>(null);
 
   const n = pelada?.jogadoresPorEquipe ?? 5;
 
@@ -153,6 +158,15 @@ export default function PartidaScreen() {
     return sessao.ordemChegada.some((id) => !onField.has(id));
   }, [sessao, timeBrancoIds, timePretoIds]);
 
+  const proximosParaVaga = useMemo(() => {
+    if (!sessao || !pendentePreencherVaga) return [] as Atleta[];
+    const onField = new Set([...timeBrancoIds, ...timePretoIds]);
+    return sessao.ordemChegada
+      .filter((id) => !onField.has(id))
+      .map((id) => atletasById[id])
+      .filter((a): a is Atleta => Boolean(a));
+  }, [atletasById, pendentePreencherVaga, sessao, timeBrancoIds, timePretoIds]);
+
   const colegas = useMemo(() => {
     if (!selected) return [] as Atleta[];
     const side = timeBrancoIds.includes(selected.id)
@@ -187,6 +201,8 @@ export default function PartidaScreen() {
         onPress: () => {
           void encerrarManual()
             .then((result) => {
+              // Vaga pendente: o modal bloqueante assume o fluxo (sem Alert extra).
+              if (result?.precisaPreencherVaga) return;
               if (result?.mensagem) {
                 Alert.alert('Partida encerrada', result.mensagem);
               }
@@ -200,6 +216,23 @@ export default function PartidaScreen() {
         },
       },
     ]);
+  };
+
+  const onEscolherVaga = (atletaId: string) => {
+    setFillBusy(true);
+    setFillError(null);
+    void confirmarPreenchimentoVaga(atletaId)
+      .then((result) => {
+        if (result && !result.precisaPreencherVaga && result.mensagem) {
+          Alert.alert('Próxima partida', result.mensagem);
+        }
+      })
+      .catch((err) => {
+        setFillError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        setFillBusy(false);
+      });
   };
 
   const timesProntos =
@@ -292,7 +325,7 @@ export default function PartidaScreen() {
       ) : null}
 
       <PlayerActionModal
-        visible={Boolean(selected)}
+        visible={Boolean(selected) && !pendentePreencherVaga}
         atleta={selected}
         colegas={colegas}
         amareloDoisMinutos={Boolean(pelada?.amareloDoisMinutos)}
@@ -305,6 +338,14 @@ export default function PartidaScreen() {
         onVermelho={marcarVermelho}
         onRemover={removerJogador}
         onSubstituir={substituirJogador}
+      />
+
+      <PreencherVagaModal
+        visible={Boolean(pendentePreencherVaga)}
+        proximos={proximosParaVaga}
+        busy={fillBusy}
+        error={fillError}
+        onSelect={onEscolherVaga}
       />
     </ScrollView>
   );
