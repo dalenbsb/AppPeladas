@@ -12,6 +12,7 @@ type JogosStore = {
     sessao: SessaoJogo;
     atletas: Atleta[];
   }) => void;
+  setPelada: (pelada: Pelada) => void;
   setSessao: (sessao: SessaoJogo) => void;
   bump: () => void;
 };
@@ -28,6 +29,7 @@ export const useJogosStore = create<JogosStore>((set) => ({
       atletasById: Object.fromEntries(atletas.map((a) => [a.id, a])),
       revision: s.revision + 1,
     })),
+  setPelada: (pelada) => set((s) => ({ pelada, revision: s.revision + 1 })),
   setSessao: (sessao) => set((s) => ({ sessao, revision: s.revision + 1 })),
   bump: () => set((s) => ({ revision: s.revision + 1 })),
 }));

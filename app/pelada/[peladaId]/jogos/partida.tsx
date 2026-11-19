@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import type { Atleta } from '@/domain/types';
+import type { Atleta, TimeSide } from '@/domain/types';
 import { AtletaFilaRow, type CartaoMarker } from '@/features/jogos/AtletaFilaRow';
 import { formatCountdown } from '@/features/jogos/cronometro';
 import { montarTimesDaFila } from '@/features/jogos/montarTimes';
@@ -20,6 +20,7 @@ import {
 import { usePartidaLiveApi } from '@/features/jogos/PartidaLiveContext';
 import { PlayerActionModal } from '@/features/jogos/PlayerActionModal';
 import { PreencherVagaModal } from '@/features/jogos/PreencherVagaModal';
+import { TeamColorPickerModal } from '@/features/jogos/TeamColorPickerModal';
 import { useJogosSession } from '@/features/jogos/useJogosSession';
 import { REGRA_EMPATE_LABELS } from '@/features/peladas/labels';
 import { TIME_UI_LABELS } from '@/features/peladas/teamLabels';
@@ -36,6 +37,7 @@ function TimeColumn({
   cartoes,
   interactive,
   onPressAtleta,
+  onPressColor,
 }: {
   title: string;
   shirtColor: string;
@@ -46,11 +48,17 @@ function TimeColumn({
   cartoes: Record<string, CartaoMarker>;
   interactive: boolean;
   onPressAtleta: (atleta: Atleta) => void;
+  onPressColor: () => void;
 }) {
   const slots = Array.from({ length: n }, (_, i) => ids[i] ?? null);
   return (
     <View style={styles.column}>
-      <View style={styles.columnHeader}>
+      <Pressable
+        style={styles.columnHeader}
+        onPress={onPressColor}
+        accessibilityRole="button"
+        accessibilityLabel={`Alterar cor do ${title}`}
+      >
         <View
           style={[
             styles.shirtSwatch,
@@ -59,7 +67,7 @@ function TimeColumn({
           ]}
         />
         <Text style={styles.columnTitle}>{title}</Text>
-      </View>
+      </Pressable>
       <Text style={styles.columnMeta}>
         {ids.length}/{n}
       </Text>
@@ -119,6 +127,7 @@ export default function PartidaScreen() {
     substituirJogador,
     confirmarPreenchimentoVaga,
     encerrarManual,
+    atualizarCorTime,
   } = usePartidaLiveApi();
 
   const rodando = usePartidaLiveStore(selectPartidaRodando);
@@ -131,6 +140,7 @@ export default function PartidaScreen() {
   const [selected, setSelected] = useState<Atleta | null>(null);
   const [fillBusy, setFillBusy] = useState(false);
   const [fillError, setFillError] = useState<string | null>(null);
+  const [colorSide, setColorSide] = useState<TimeSide | null>(null);
 
   const n = pelada?.jogadoresPorEquipe ?? 5;
 
@@ -256,6 +266,19 @@ export default function PartidaScreen() {
     (timeBrancoIds.length > 0 || timePretoIds.length > 0) &&
     (!partida || !partida.encerradaEm);
 
+  const corTime1 = pelada?.corTime1 ?? '#FFFFFF';
+  const corTime2 = pelada?.corTime2 ?? '#111111';
+
+  const onPickColor = (cor: string) => {
+    if (!colorSide) return;
+    void atualizarCorTime(colorSide, cor).catch((err) => {
+      Alert.alert(
+        'Não foi possível alterar a cor',
+        err instanceof Error ? err.message : String(err),
+      );
+    });
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Times em campo</Text>
@@ -309,7 +332,7 @@ export default function PartidaScreen() {
       <View style={styles.teams}>
         <TimeColumn
           title={TIME_UI_LABELS.branco}
-          shirtColor={pelada?.corTime1 ?? '#FFFFFF'}
+          shirtColor={corTime1}
           ids={timeBrancoIds}
           atletasById={atletasById}
           n={n}
@@ -317,10 +340,11 @@ export default function PartidaScreen() {
           cartoes={cartoes}
           interactive={podeAjustarElenco}
           onPressAtleta={setSelected}
+          onPressColor={() => setColorSide('branco')}
         />
         <TimeColumn
           title={TIME_UI_LABELS.preto}
-          shirtColor={pelada?.corTime2 ?? '#111111'}
+          shirtColor={corTime2}
           ids={timePretoIds}
           atletasById={atletasById}
           n={n}
@@ -328,16 +352,21 @@ export default function PartidaScreen() {
           cartoes={cartoes}
           interactive={podeAjustarElenco}
           onPressAtleta={setSelected}
+          onPressColor={() => setColorSide('preto')}
         />
       </View>
 
       {podeAjustarElenco ? (
         <Text style={styles.hint}>
           {rodando
-            ? 'Toque em um jogador para gol, cartão, substituição ou remoção.'
-            : 'Toque em um jogador para substituir pelo próximo ou remover (antes do início).'}
+            ? 'Toque em um jogador para gol, cartão, substituição ou remoção. Toque no nome do time para mudar a cor.'
+            : 'Toque em um jogador para substituir pelo próximo ou remover (antes do início). Toque no nome do time para mudar a cor.'}
         </Text>
-      ) : null}
+      ) : (
+        <Text style={styles.hint}>
+          Toque em Time 1 ou Time 2 para alterar a cor da camisa.
+        </Text>
+      )}
 
       <PlayerActionModal
         visible={Boolean(selected) && !pendentePreencherVaga}
@@ -361,6 +390,19 @@ export default function PartidaScreen() {
         busy={fillBusy}
         error={fillError}
         onSelect={onEscolherVaga}
+      />
+
+      <TeamColorPickerModal
+        visible={colorSide != null}
+        title={
+          colorSide
+            ? `Cor do ${TIME_UI_LABELS[colorSide]}`
+            : 'Cor da camisa'
+        }
+        value={colorSide === 'preto' ? corTime2 : corTime1}
+        blockedColor={colorSide === 'preto' ? corTime1 : corTime2}
+        onChange={onPickColor}
+        onClose={() => setColorSide(null)}
       />
     </ScrollView>
   );
