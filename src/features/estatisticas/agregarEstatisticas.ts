@@ -3,8 +3,14 @@
  * Usa partidas encerradas + elenco snapshot + eventos.
  */
 import type { Atleta, EventoPartida, Partida } from '@/domain/types';
-
+import { dayKeyInRange, toLocalDayKey } from '@/features/historico/dateLocal';
 import { vencedorDaPartida } from '@/features/jogos/fimPartida';
+
+export type EstatisticasFiltroPeriodo = {
+  /** YYYY-MM-DD inclusive, ou null = sem limite. */
+  dataInicioKey?: string | null;
+  dataFimKey?: string | null;
+};
 
 export type TotaisRow = {
   atletaId: string;
@@ -98,16 +104,24 @@ function sortByThenNome<T extends { nome: string }>(
 /**
  * Agrega estatísticas a partir de partidas, eventos e atletas da pelada.
  * Só partidas encerradas entram em jogos/vitórias/derrotas/empates.
+ * Filtro opcional por período (data de encerramento, dia local).
  */
 export function agregarEstatisticas(
   atletas: Atleta[],
   partidas: Partida[],
   eventos: EventoPartida[],
+  filtro?: EstatisticasFiltroPeriodo,
 ): EstatisticasPelada {
   const nomeById = new Map(atletas.map((a) => [a.id, a.nome]));
   const byId = new Map<string, Acc>();
 
-  const encerradas = partidas.filter((p) => Boolean(p.encerradaEm));
+  const inicio = filtro?.dataInicioKey ?? null;
+  const fim = filtro?.dataFimKey ?? null;
+  const encerradas = partidas.filter((p) => {
+    if (!p.encerradaEm) return false;
+    if (!inicio && !fim) return true;
+    return dayKeyInRange(toLocalDayKey(p.encerradaEm), inicio, fim);
+  });
 
   for (const partida of encerradas) {
     const vencedor = vencedorDaPartida(partida.placarBranco, partida.placarPreto);

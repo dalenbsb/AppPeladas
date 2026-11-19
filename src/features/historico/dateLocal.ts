@@ -44,3 +44,14 @@ function isValidDayKey(key: string): boolean {
     date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
   );
 }
+
+/** Inclusivo em YYYY-MM-DD (compara lexicograficamente). */
+export function dayKeyInRange(
+  dayKey: string,
+  inicio: string | null | undefined,
+  fim: string | null | undefined,
+): boolean {
+  if (inicio && dayKey < inicio) return false;
+  if (fim && dayKey > fim) return false;
+  return true;
+}

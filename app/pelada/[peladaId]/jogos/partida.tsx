@@ -13,6 +13,7 @@ import { AtletaFilaRow, type CartaoMarker } from '@/features/jogos/AtletaFilaRow
 import { formatCountdown } from '@/features/jogos/cronometro';
 import { montarTimesDaFila } from '@/features/jogos/montarTimes';
 import {
+  amareloRestanteMs as calcAmareloRestanteMs,
   selectPartidaAtiva,
   selectPartidaRodando,
   usePartidaLiveStore,
@@ -158,7 +159,7 @@ export default function PartidaScreen() {
   const amareloRestante = useMemo(() => {
     const map: Record<string, number> = {};
     for (const a of amarelosAtivos) {
-      map[a.atletaId] = new Date(a.retornaEm).getTime() - nowMs;
+      map[a.atletaId] = calcAmareloRestanteMs(a, nowMs);
     }
     return map;
   }, [amarelosAtivos, nowMs]);

@@ -170,6 +170,8 @@ function validatePartida(item: unknown, index: number): Partida {
     ...(item as unknown as Partida),
     tempoDecorridoMs:
       typeof item.tempoDecorridoMs === 'number' ? item.tempoDecorridoMs : 0,
+    segmentStartedAtMs:
+      typeof item.segmentStartedAtMs === 'number' ? item.segmentStartedAtMs : null,
     timeBrancoIds: isStringArray(item.timeBrancoIds) ? item.timeBrancoIds : [],
     timePretoIds: isStringArray(item.timePretoIds) ? item.timePretoIds : [],
     corTime1,

@@ -69,9 +69,25 @@ assert(
 assert(
   segmentStartedAtAposReload({
     partidaId: 'p1',
+    rodando: true,
+    prevPartidaId: null,
+    prevSegmentStartedAt: null,
+    persistedSegmentStartedAt: 40_000,
+    now: 90_000,
+  }) === 40_000,
+  'reload após sair da tela restaura âncora persistida',
+);
+assert(
+  tempoExibidoMs(5_000, true, 40_000, 90_000) === 55_000,
+  'tempo continua com âncora persistida após remount',
+);
+assert(
+  segmentStartedAtAposReload({
+    partidaId: 'p1',
     rodando: false,
     prevPartidaId: 'p1',
     prevSegmentStartedAt: segAntes,
+    persistedSegmentStartedAt: 40_000,
   }) === null,
   'pausada/encerrada limpa segmento',
 );

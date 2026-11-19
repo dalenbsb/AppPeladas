@@ -5,14 +5,21 @@ import { useRepositories } from '@/db/DatabaseProvider';
 
 import {
   agregarEstatisticas,
+  type EstatisticasFiltroPeriodo,
   type EstatisticasPelada,
 } from './agregarEstatisticas';
 
-export function useEstatisticas(peladaId: string) {
+export function useEstatisticas(
+  peladaId: string,
+  filtro: EstatisticasFiltroPeriodo = {},
+) {
   const repos = useRepositories();
   const [data, setData] = useState<EstatisticasPelada | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const dataInicioKey = filtro.dataInicioKey ?? null;
+  const dataFimKey = filtro.dataFimKey ?? null;
 
   useFocusEffect(
     useCallback(() => {
@@ -27,7 +34,12 @@ export function useEstatisticas(peladaId: string) {
             repos.eventos.listByPelada(peladaId),
           ]);
           if (!active) return;
-          setData(agregarEstatisticas(atletas, partidas, eventos));
+          setData(
+            agregarEstatisticas(atletas, partidas, eventos, {
+              dataInicioKey,
+              dataFimKey,
+            }),
+          );
         } catch (err) {
           if (!active) return;
           setError(err instanceof Error ? err.message : 'Erro ao carregar estatísticas');
@@ -39,7 +51,14 @@ export function useEstatisticas(peladaId: string) {
       return () => {
         active = false;
       };
-    }, [peladaId, repos.atletas, repos.eventos, repos.partidas]),
+    }, [
+      dataFimKey,
+      dataInicioKey,
+      peladaId,
+      repos.atletas,
+      repos.eventos,
+      repos.partidas,
+    ]),
   );
 
   return { data, loading, error };

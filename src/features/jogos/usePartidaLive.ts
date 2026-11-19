@@ -130,23 +130,41 @@ export function usePartidaLive() {
     const rodando = Boolean(aberta.iniciadaEm) && !aberta.pausada && !aberta.encerradaEm;
     setPartida(aberta);
     setEventos(eventos);
-    // Não reinicia o segmento se a mesma partida já está rodando na UI
-    // (roster update via setSessao — ex. segundo amarelo — não deve zerar o relógio).
+    // Preserva segmento em memória (ex. 2º amarelo) ou restaura do SQLite
+    // após sair/reentrar na tela de Jogos — só Encerrar zera de verdade.
     setSegmentStartedAt(
       segmentStartedAtAposReload({
         partidaId: aberta.id,
         rodando,
         prevPartidaId: prev.partida?.id,
         prevSegmentStartedAt: prev.segmentStartedAt,
+        persistedSegmentStartedAt: aberta.segmentStartedAtMs,
       }),
     );
 
     const agora = Date.now();
     const amarelos: AmareloAtivo[] = [];
     for (const ev of eventos) {
-      if (ev.tipo !== 'amarelo' || !ev.meta?.retornaEm) continue;
-      if (new Date(ev.meta.retornaEm).getTime() > agora) {
-        amarelos.push({ atletaId: ev.atletaId, retornaEm: ev.meta.retornaEm });
+      if (ev.tipo !== 'amarelo' || !ev.meta) continue;
+      const restanteMeta = ev.meta.retornaEmRestanteMs;
+      if (
+        typeof restanteMeta === 'number' &&
+        Number.isFinite(restanteMeta) &&
+        restanteMeta > 0
+      ) {
+        amarelos.push({
+          atletaId: ev.atletaId,
+          retornaEm: null,
+          restanteMs: restanteMeta,
+        });
+        continue;
+      }
+      if (ev.meta.retornaEm && new Date(ev.meta.retornaEm).getTime() > agora) {
+        amarelos.push({
+          atletaId: ev.atletaId,
+          retornaEm: ev.meta.retornaEm,
+          restanteMs: null,
+        });
       }
     }
     setAmarelosAtivos(amarelos);
@@ -168,13 +186,19 @@ export function usePartidaLive() {
     void load();
   }, [load]);
 
-  // Tick do cronômetro + limpeza de amarelos expirados
+  // Tick do cronômetro + limpeza de amarelos expirados (não avança se pausada)
   useEffect(() => {
     const id = setInterval(() => {
       tick();
+      const state = usePartidaLiveStore.getState();
+      if (state.partida?.pausada) return;
       const agora = Date.now();
-      const atuais = usePartidaLiveStore.getState().amarelosAtivos;
-      const ainda = atuais.filter((a) => new Date(a.retornaEm).getTime() > agora);
+      const atuais = state.amarelosAtivos;
+      const ainda = atuais.filter((a) => {
+        if (a.restanteMs != null) return a.restanteMs > 0;
+        if (a.retornaEm) return new Date(a.retornaEm).getTime() > agora;
+        return false;
+      });
       if (ainda.length !== atuais.length) {
         setAmarelosAtivos(ainda);
       }
@@ -230,6 +254,7 @@ export function usePartidaLive() {
           placarBranco: p.placarBranco,
           placarPreto: p.placarPreto,
           tempoDecorridoMs: tempo,
+          segmentStartedAtMs: null,
           pausada: true,
           encerradaEm: nowIso(),
           motivoFim: motivo,
@@ -378,6 +403,9 @@ export function usePartidaLive() {
       current = null;
     }
 
+    const segmentAt = Date.now();
+    const estavaPausada = Boolean(current?.pausada && current.iniciadaEm);
+
     if (!current) {
       current = await repos.partidas.create({
         peladaId: pelada.id,
@@ -385,6 +413,7 @@ export function usePartidaLive() {
         placarBranco: 0,
         placarPreto: 0,
         tempoDecorridoMs: 0,
+        segmentStartedAtMs: segmentAt,
         timeBrancoIds: times.timeBrancoIds,
         timePretoIds: times.timePretoIds,
         corTime1: pelada.corTime1,
@@ -399,13 +428,19 @@ export function usePartidaLive() {
       current = await repos.partidas.update(current.id, {
         iniciadaEm: nowIso(),
         pausada: false,
+        segmentStartedAtMs: segmentAt,
         timeBrancoIds: times.timeBrancoIds,
         timePretoIds: times.timePretoIds,
         corTime1: pelada.corTime1,
         corTime2: pelada.corTime2,
       });
     } else if (current.pausada) {
-      current = await repos.partidas.update(current.id, { pausada: false });
+      await repos.eventos.retomarAmareloSuspensaoAtiva(current.id, segmentAt);
+      current = await repos.partidas.update(current.id, {
+        pausada: false,
+        segmentStartedAtMs: segmentAt,
+      });
+      setEventos(await repos.eventos.listByPartida(current.id));
     } else if (
       current.timeBrancoIds.length === 0 &&
       current.timePretoIds.length === 0
@@ -416,6 +451,12 @@ export function usePartidaLive() {
         timePretoIds: times.timePretoIds,
         corTime1: pelada.corTime1,
         corTime2: pelada.corTime2,
+        segmentStartedAtMs: current.segmentStartedAtMs ?? segmentAt,
+      });
+    } else if (current.segmentStartedAtMs == null) {
+      // Já rodando sem âncora persistida (legado): grava a atual.
+      current = await repos.partidas.update(current.id, {
+        segmentStartedAtMs: segmentAt,
       });
     }
 
@@ -426,14 +467,34 @@ export function usePartidaLive() {
     });
     setSessao(updatedSessao);
     setPartida(current);
-    setSegmentStartedAt(Date.now());
+    setSegmentStartedAt(current.segmentStartedAtMs ?? segmentAt);
+
+    if (estavaPausada) {
+      const eventos = await repos.eventos.listByPartida(current.id);
+      const agora = Date.now();
+      const amarelos: AmareloAtivo[] = [];
+      for (const ev of eventos) {
+        if (ev.tipo !== 'amarelo' || !ev.meta?.retornaEm) continue;
+        if (new Date(ev.meta.retornaEm).getTime() > agora) {
+          amarelos.push({
+            atletaId: ev.atletaId,
+            retornaEm: ev.meta.retornaEm,
+            restanteMs: null,
+          });
+        }
+      }
+      setAmarelosAtivos(amarelos);
+    }
+
     setMensagemFim(null);
     setPendentePreencherVaga(null);
   }, [
     pelada,
+    repos.eventos,
     repos.partidas,
     repos.sessoes,
     sessao,
+    setAmarelosAtivos,
     setEventos,
     setMensagemFim,
     setPartida,
@@ -445,14 +506,41 @@ export function usePartidaLive() {
   const pausar = useCallback(async () => {
     const p = usePartidaLiveStore.getState().partida;
     if (!p || p.pausada || p.encerradaEm || !p.iniciadaEm) return;
+    const agora = Date.now();
     const tempo = tempoAtualMs();
+    await repos.eventos.pausarAmareloSuspensaoAtiva(p.id, agora);
     const updated = await repos.partidas.update(p.id, {
       pausada: true,
       tempoDecorridoMs: tempo,
+      segmentStartedAtMs: null,
     });
     setPartida(updated);
     setSegmentStartedAt(null);
-  }, [repos.partidas, setPartida, setSegmentStartedAt, tempoAtualMs]);
+
+    const eventos = await repos.eventos.listByPartida(p.id);
+    setEventos(eventos);
+    const amarelos: AmareloAtivo[] = [];
+    for (const ev of eventos) {
+      if (ev.tipo !== 'amarelo' || !ev.meta) continue;
+      const restante = ev.meta.retornaEmRestanteMs;
+      if (typeof restante === 'number' && Number.isFinite(restante) && restante > 0) {
+        amarelos.push({
+          atletaId: ev.atletaId,
+          retornaEm: null,
+          restanteMs: restante,
+        });
+      }
+    }
+    setAmarelosAtivos(amarelos);
+  }, [
+    repos.eventos,
+    repos.partidas,
+    setAmarelosAtivos,
+    setEventos,
+    setPartida,
+    setSegmentStartedAt,
+    tempoAtualMs,
+  ]);
 
   const maybeEndByGoals = useCallback(
     async (placarBranco: number, placarPreto: number) => {
@@ -632,7 +720,7 @@ export function usePartidaLive() {
       if (retornaEm) {
         const next = [
           ...usePartidaLiveStore.getState().amarelosAtivos.filter((a) => a.atletaId !== atletaId),
-          { atletaId, retornaEm },
+          { atletaId, retornaEm, restanteMs: null },
         ];
         setAmarelosAtivos(next);
       }

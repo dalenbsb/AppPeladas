@@ -76,6 +76,12 @@ export interface Partida {
   placarPreto: number;
   /** Tempo acumulado do cronômetro (ms), atualizado ao pausar/encerrar. */
   tempoDecorridoMs: number;
+  /**
+   * Epoch ms do início do segmento atual enquanto a partida está rodando.
+   * Persistido para o cronômetro sobreviver a sair/reentrar na tela.
+   * Null quando pausada, não iniciada ou encerrada.
+   */
+  segmentStartedAtMs: number | null;
   /** Snapshot do elenco em campo ao iniciar (para estatísticas). */
   timeBrancoIds: string[];
   timePretoIds: string[];
@@ -95,6 +101,11 @@ export interface EventoPartidaMeta {
   gravidadeVermelho?: 'leve' | 'grave';
   /** ISO — retorno após amarelo com minutos configurados fora. */
   retornaEm?: string;
+  /**
+   * Ms restantes da suspensão quando a partida está pausada
+   * (congela o timer de retorno junto com o cronômetro).
+   */
+  retornaEmRestanteMs?: number;
   observacao?: string;
 }
 
@@ -155,6 +166,7 @@ export type NewPartida = Omit<
   | 'createdAt'
   | 'updatedAt'
   | 'tempoDecorridoMs'
+  | 'segmentStartedAtMs'
   | 'timeBrancoIds'
   | 'timePretoIds'
   | 'corTime1'
@@ -164,6 +176,7 @@ export type NewPartida = Omit<
   createdAt?: string;
   updatedAt?: string;
   tempoDecorridoMs?: number;
+  segmentStartedAtMs?: number | null;
   timeBrancoIds?: string[];
   timePretoIds?: string[];
   corTime1?: string;
