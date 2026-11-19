@@ -224,8 +224,8 @@ export function preencherVagaVencedorEMontarAdversario(
       ladoQueFica: null,
       mensagem:
         ladoQueFica === 'branco'
-          ? 'Vaga preenchida. Camisa branco permanece; próximo time entrou como Camisa preta.'
-          : 'Vaga preenchida. Camisa preta permanece; próximo time entrou como Camisa branco.',
+          ? 'Vaga preenchida. Time 1 permanece; próximo time entrou como Time 2.'
+          : 'Vaga preenchida. Time 2 permanece; próximo time entrou como Time 1.',
     };
   }
 
@@ -297,12 +297,12 @@ function mensagemRotacaoVencedor(
   if (precisaPreencherVaga) return MSG_PREENCHER_VAGA_VENCEDOR;
   if (contexto === 'empate_fica') {
     return vencedor === 'branco'
-      ? 'Empate: permanece Camisa branco (vantagem no ciclo). Camisa preta sai.'
-      : 'Empate: permanece Camisa preta (vantagem no ciclo). Camisa branco sai.';
+      ? 'Empate: permanece Time 1 (vantagem no ciclo). Time 2 sai.'
+      : 'Empate: permanece Time 2 (vantagem no ciclo). Time 1 sai.';
   }
   return vencedor === 'branco'
-    ? 'Camisa branco venceu e permanece. Camisa preta vai para o fim da fila.'
-    : 'Camisa preta venceu e permanece. Camisa branco vai para o fim da fila.';
+    ? 'Time 1 venceu e permanece. Time 2 vai para o fim da fila.'
+    : 'Time 2 venceu e permanece. Time 1 vai para o fim da fila.';
 }
 
 export function aplicarFimPartida(input: FimPartidaInput): FimPartidaResult {

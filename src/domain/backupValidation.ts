@@ -1,3 +1,4 @@
+import { DEFAULT_COR_TIME1, DEFAULT_COR_TIME2 } from './teamColors';
 import {
   BACKUP_JSON_VERSION,
   type Atleta,
@@ -60,10 +61,37 @@ function validatePelada(item: unknown, index: number): Pelada {
   assert(isStringArray(item.criteriosSorteio), `peladas[${index}].criteriosSorteio inválido`);
   assert(isString(item.regraEmpate), `peladas[${index}].regraEmpate inválida`);
   assert(isBoolean(item.telaSempreLigada), `peladas[${index}].telaSempreLigada inválida`);
-  assert(isBoolean(item.amareloDoisMinutos), `peladas[${index}].amareloDoisMinutos inválido`);
+  // Aceita campo novo (0–5) ou legado booleano `amareloDoisMinutos`.
+  let amareloMinutosFora = 0;
+  if (typeof item.amareloMinutosFora === 'number') {
+    assert(
+      Number.isInteger(item.amareloMinutosFora) &&
+        item.amareloMinutosFora >= 0 &&
+        item.amareloMinutosFora <= 5,
+      `peladas[${index}].amareloMinutosFora inválido`,
+    );
+    amareloMinutosFora = item.amareloMinutosFora;
+  } else if (isBoolean(item.amareloDoisMinutos)) {
+    amareloMinutosFora = item.amareloDoisMinutos ? 2 : 0;
+  } else {
+    assert(false, `peladas[${index}].amareloMinutosFora inválido`);
+  }
+  const corTime1 =
+    typeof item.corTime1 === 'string' && item.corTime1.trim()
+      ? item.corTime1.trim()
+      : DEFAULT_COR_TIME1;
+  const corTime2 =
+    typeof item.corTime2 === 'string' && item.corTime2.trim()
+      ? item.corTime2.trim()
+      : DEFAULT_COR_TIME2;
   assert(isString(item.createdAt), `peladas[${index}].createdAt inválido`);
   assert(isString(item.updatedAt), `peladas[${index}].updatedAt inválido`);
-  return item as unknown as Pelada;
+  return {
+    ...(item as unknown as Pelada),
+    amareloMinutosFora,
+    corTime1,
+    corTime2,
+  };
 }
 
 function validateAtleta(item: unknown, index: number): Atleta {
@@ -130,12 +158,22 @@ function validatePartida(item: unknown, index: number): Partida {
   );
   assert(isString(item.createdAt), `partidas[${index}].createdAt inválido`);
   assert(isString(item.updatedAt), `partidas[${index}].updatedAt inválido`);
+  const corTime1 =
+    typeof item.corTime1 === 'string' && item.corTime1.trim()
+      ? item.corTime1.trim()
+      : DEFAULT_COR_TIME1;
+  const corTime2 =
+    typeof item.corTime2 === 'string' && item.corTime2.trim()
+      ? item.corTime2.trim()
+      : DEFAULT_COR_TIME2;
   return {
     ...(item as unknown as Partida),
     tempoDecorridoMs:
       typeof item.tempoDecorridoMs === 'number' ? item.tempoDecorridoMs : 0,
     timeBrancoIds: isStringArray(item.timeBrancoIds) ? item.timeBrancoIds : [],
     timePretoIds: isStringArray(item.timePretoIds) ? item.timePretoIds : [],
+    corTime1,
+    corTime2,
   };
 }
 

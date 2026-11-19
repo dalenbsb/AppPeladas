@@ -22,10 +22,13 @@ import { PlayerActionModal } from '@/features/jogos/PlayerActionModal';
 import { PreencherVagaModal } from '@/features/jogos/PreencherVagaModal';
 import { useJogosSession } from '@/features/jogos/useJogosSession';
 import { REGRA_EMPATE_LABELS } from '@/features/peladas/labels';
+import { TIME_UI_LABELS } from '@/features/peladas/teamLabels';
+import { isLightColor } from '@/domain/teamColors';
 import { colors } from '@/theme/colors';
 
 function TimeColumn({
   title,
+  shirtColor,
   ids,
   atletasById,
   n,
@@ -35,6 +38,7 @@ function TimeColumn({
   onPressAtleta,
 }: {
   title: string;
+  shirtColor: string;
   ids: string[];
   atletasById: Record<string, Atleta>;
   n: number;
@@ -46,7 +50,16 @@ function TimeColumn({
   const slots = Array.from({ length: n }, (_, i) => ids[i] ?? null);
   return (
     <View style={styles.column}>
-      <Text style={styles.columnTitle}>{title}</Text>
+      <View style={styles.columnHeader}>
+        <View
+          style={[
+            styles.shirtSwatch,
+            { backgroundColor: shirtColor },
+            isLightColor(shirtColor) && styles.shirtSwatchLight,
+          ]}
+        />
+        <Text style={styles.columnTitle}>{title}</Text>
+      </View>
       <Text style={styles.columnMeta}>
         {ids.length}/{n}
       </Text>
@@ -295,7 +308,8 @@ export default function PartidaScreen() {
 
       <View style={styles.teams}>
         <TimeColumn
-          title="Camisa branco"
+          title={TIME_UI_LABELS.branco}
+          shirtColor={pelada?.corTime1 ?? '#FFFFFF'}
           ids={timeBrancoIds}
           atletasById={atletasById}
           n={n}
@@ -305,7 +319,8 @@ export default function PartidaScreen() {
           onPressAtleta={setSelected}
         />
         <TimeColumn
-          title="Camisa preta"
+          title={TIME_UI_LABELS.preto}
+          shirtColor={pelada?.corTime2 ?? '#111111'}
           ids={timePretoIds}
           atletasById={atletasById}
           n={n}
@@ -328,7 +343,7 @@ export default function PartidaScreen() {
         visible={Boolean(selected) && !pendentePreencherVaga}
         atleta={selected}
         colegas={colegas}
-        amareloDoisMinutos={Boolean(pelada?.amareloDoisMinutos)}
+        amareloMinutosFora={pelada?.amareloMinutosFora ?? 0}
         partidaEmAndamento={rodando}
         temProximo={temProximo}
         onClose={() => setSelected(null)}
@@ -433,6 +448,20 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     gap: 4,
+  },
+  columnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  shirtSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  shirtSwatchLight: {
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   columnTitle: {
     fontSize: 14,

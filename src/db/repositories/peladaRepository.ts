@@ -1,8 +1,14 @@
+import { DEFAULT_COR_TIME1, DEFAULT_COR_TIME2 } from '@/domain/teamColors';
 import type { NewPelada, Pelada } from '@/domain/types';
 
 import { createId, nowIso } from '../ids';
 import { mapPelada, type PeladaRow } from '../mappers';
 import type { SqlExecutor } from '../sqlExecutor';
+
+function clampAmareloMinutos(value: number | undefined): number {
+  if (value == null || Number.isNaN(value)) return 0;
+  return Math.min(5, Math.max(0, Math.trunc(value)));
+}
 
 export class PeladaRepository {
   constructor(private readonly db: SqlExecutor) {}
@@ -22,12 +28,16 @@ export class PeladaRepository {
     const now = nowIso();
     const createdAt = input.createdAt ?? now;
     const updatedAt = input.updatedAt ?? now;
+    const amareloMinutosFora = clampAmareloMinutos(input.amareloMinutosFora);
+    const corTime1 = input.corTime1?.trim() || DEFAULT_COR_TIME1;
+    const corTime2 = input.corTime2?.trim() || DEFAULT_COR_TIME2;
     await this.db.run(
       `INSERT INTO peladas (
         id, nome, descricao, duracao_min, limite_gols, jogadores_por_equipe,
         criterios_sorteio_json, regra_empate, tela_sempre_ligada, amarelo_dois_minutos,
+        amarelo_minutos_fora, cor_time1, cor_time2,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.nome,
@@ -38,7 +48,10 @@ export class PeladaRepository {
         JSON.stringify(input.criteriosSorteio),
         input.regraEmpate,
         input.telaSempreLigada ? 1 : 0,
-        input.amareloDoisMinutos ? 1 : 0,
+        amareloMinutosFora === 2 ? 1 : 0,
+        amareloMinutosFora,
+        corTime1,
+        corTime2,
         createdAt,
         updatedAt,
       ],
@@ -60,13 +73,19 @@ export class PeladaRepository {
       ...patch,
       id: current.id,
       createdAt: current.createdAt,
+      amareloMinutosFora: clampAmareloMinutos(
+        patch.amareloMinutosFora ?? current.amareloMinutosFora,
+      ),
+      corTime1: (patch.corTime1 ?? current.corTime1).trim() || DEFAULT_COR_TIME1,
+      corTime2: (patch.corTime2 ?? current.corTime2).trim() || DEFAULT_COR_TIME2,
       updatedAt: nowIso(),
     };
     await this.db.run(
       `UPDATE peladas SET
         nome = ?, descricao = ?, duracao_min = ?, limite_gols = ?,
         jogadores_por_equipe = ?, criterios_sorteio_json = ?, regra_empate = ?,
-        tela_sempre_ligada = ?, amarelo_dois_minutos = ?, updated_at = ?
+        tela_sempre_ligada = ?, amarelo_dois_minutos = ?, amarelo_minutos_fora = ?,
+        cor_time1 = ?, cor_time2 = ?, updated_at = ?
       WHERE id = ?`,
       [
         next.nome,
@@ -77,7 +96,10 @@ export class PeladaRepository {
         JSON.stringify(next.criteriosSorteio),
         next.regraEmpate,
         next.telaSempreLigada ? 1 : 0,
-        next.amareloDoisMinutos ? 1 : 0,
+        next.amareloMinutosFora === 2 ? 1 : 0,
+        next.amareloMinutosFora,
+        next.corTime1,
+        next.corTime2,
         next.updatedAt,
         id,
       ],

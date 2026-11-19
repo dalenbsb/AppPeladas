@@ -13,6 +13,7 @@ import type {
   SessaoStatus,
   TipoEventoPartida,
 } from '@/domain/types';
+import { DEFAULT_COR_TIME1, DEFAULT_COR_TIME2 } from '@/domain/teamColors';
 
 export interface PeladaRow {
   id: string;
@@ -24,7 +25,10 @@ export interface PeladaRow {
   criterios_sorteio_json: string;
   regra_empate: string;
   tela_sempre_ligada: number;
-  amarelo_dois_minutos: number;
+  amarelo_dois_minutos?: number | null;
+  amarelo_minutos_fora?: number | null;
+  cor_time1?: string | null;
+  cor_time2?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +69,8 @@ export interface PartidaRow {
   tempo_decorrido_ms?: number | null;
   time_branco_ids_json?: string | null;
   time_preto_ids_json?: string | null;
+  cor_time1?: string | null;
+  cor_time2?: string | null;
   iniciada_em: string | null;
   pausada: number;
   encerrada_em: string | null;
@@ -92,6 +98,13 @@ export interface EventoRow {
   created_at: string;
 }
 
+function resolveAmareloMinutos(row: PeladaRow): number {
+  if (typeof row.amarelo_minutos_fora === 'number') {
+    return Math.min(5, Math.max(0, Math.trunc(row.amarelo_minutos_fora)));
+  }
+  return row.amarelo_dois_minutos ? 2 : 0;
+}
+
 export function mapPelada(row: PeladaRow): Pelada {
   return {
     id: row.id,
@@ -103,7 +116,9 @@ export function mapPelada(row: PeladaRow): Pelada {
     criteriosSorteio: JSON.parse(row.criterios_sorteio_json) as CriterioSorteio[],
     regraEmpate: row.regra_empate as RegraEmpate,
     telaSempreLigada: Boolean(row.tela_sempre_ligada),
-    amareloDoisMinutos: Boolean(row.amarelo_dois_minutos),
+    amareloMinutosFora: resolveAmareloMinutos(row),
+    corTime1: row.cor_time1?.trim() || DEFAULT_COR_TIME1,
+    corTime2: row.cor_time2?.trim() || DEFAULT_COR_TIME2,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -150,6 +165,8 @@ export function mapPartida(row: PartidaRow): Partida {
     tempoDecorridoMs: row.tempo_decorrido_ms ?? 0,
     timeBrancoIds: parseIdJson(row.time_branco_ids_json),
     timePretoIds: parseIdJson(row.time_preto_ids_json),
+    corTime1: row.cor_time1?.trim() || DEFAULT_COR_TIME1,
+    corTime2: row.cor_time2?.trim() || DEFAULT_COR_TIME2,
     iniciadaEm: row.iniciada_em,
     pausada: Boolean(row.pausada),
     encerradaEm: row.encerrada_em,

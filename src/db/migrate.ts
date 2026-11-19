@@ -7,12 +7,17 @@ import {
   MIGRATION_003_PARTIDA_ELENCO,
   MIGRATION_003_VERSION,
 } from './migrations/003_partida_elenco';
+import {
+  MIGRATION_004_AMARELO_CORES,
+  MIGRATION_004_VERSION,
+} from './migrations/004_amarelo_cores';
 import type { SqlExecutor } from './sqlExecutor';
 
 const MIGRATIONS: { version: number; sql: string }[] = [
   { version: MIGRATION_001_VERSION, sql: MIGRATION_001_INITIAL },
   { version: MIGRATION_002_VERSION, sql: MIGRATION_002_PARTIDA_TEMPO },
   { version: MIGRATION_003_VERSION, sql: MIGRATION_003_PARTIDA_ELENCO },
+  { version: MIGRATION_004_VERSION, sql: MIGRATION_004_AMARELO_CORES },
 ];
 
 export async function migrate(db: SqlExecutor): Promise<void> {

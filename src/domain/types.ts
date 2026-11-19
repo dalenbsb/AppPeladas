@@ -27,7 +27,15 @@ export interface Pelada {
   criteriosSorteio: CriterioSorteio[];
   regraEmpate: RegraEmpate;
   telaSempreLigada: boolean;
-  amareloDoisMinutos: boolean;
+  /**
+   * Minutos fora após cartão amarelo (0–5).
+   * 0 = só registra o amarelo (sem suspensão temporal).
+   */
+  amareloMinutosFora: number;
+  /** Cor da camisa do Time 1 (lado `branco` no domínio). */
+  corTime1: string;
+  /** Cor da camisa do Time 2 (lado `preto` no domínio). */
+  corTime2: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +79,9 @@ export interface Partida {
   /** Snapshot do elenco em campo ao iniciar (para estatísticas). */
   timeBrancoIds: string[];
   timePretoIds: string[];
+  /** Snapshot das cores dos times no momento da partida (histórico). */
+  corTime1: string;
+  corTime2: string;
   iniciadaEm: string | null;
   pausada: boolean;
   encerradaEm: string | null;
@@ -82,7 +93,7 @@ export interface Partida {
 export interface EventoPartidaMeta {
   assistenteId?: string;
   gravidadeVermelho?: 'leve' | 'grave';
-  /** ISO — retorno após amarelo com 2 min fora. */
+  /** ISO — retorno após amarelo com minutos configurados fora. */
   retornaEm?: string;
   observacao?: string;
 }
@@ -140,7 +151,14 @@ export type NewSessaoJogo = Omit<SessaoJogo, 'id' | 'createdAt' | 'updatedAt'> &
 
 export type NewPartida = Omit<
   Partida,
-  'id' | 'createdAt' | 'updatedAt' | 'tempoDecorridoMs' | 'timeBrancoIds' | 'timePretoIds'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'tempoDecorridoMs'
+  | 'timeBrancoIds'
+  | 'timePretoIds'
+  | 'corTime1'
+  | 'corTime2'
 > & {
   id?: string;
   createdAt?: string;
@@ -148,6 +166,8 @@ export type NewPartida = Omit<
   tempoDecorridoMs?: number;
   timeBrancoIds?: string[];
   timePretoIds?: string[];
+  corTime1?: string;
+  corTime2?: string;
 };
 
 export type NewEventoPartida = Omit<EventoPartida, 'id' | 'createdAt'> & {

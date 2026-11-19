@@ -1,3 +1,4 @@
+import { DEFAULT_COR_TIME1, DEFAULT_COR_TIME2, coresIguais } from '@/domain/teamColors';
 import type { NewPelada, Pelada } from '@/domain/types';
 
 export type PeladaFormValues = {
@@ -9,7 +10,9 @@ export type PeladaFormValues = {
   criteriosSorteio: NewPelada['criteriosSorteio'];
   regraEmpate: NewPelada['regraEmpate'];
   telaSempreLigada: boolean;
-  amareloDoisMinutos: boolean;
+  amareloMinutosFora: number;
+  corTime1: string;
+  corTime2: string;
 };
 
 export function defaultPeladaFormValues(): PeladaFormValues {
@@ -22,7 +25,9 @@ export function defaultPeladaFormValues(): PeladaFormValues {
     criteriosSorteio: ['ordem_chegada'],
     regraEmpate: 'sai_os_dois',
     telaSempreLigada: true,
-    amareloDoisMinutos: true,
+    amareloMinutosFora: 2,
+    corTime1: DEFAULT_COR_TIME1,
+    corTime2: DEFAULT_COR_TIME2,
   };
 }
 
@@ -36,7 +41,9 @@ export function peladaToFormValues(pelada: Pelada): PeladaFormValues {
     criteriosSorteio: [...pelada.criteriosSorteio],
     regraEmpate: pelada.regraEmpate,
     telaSempreLigada: pelada.telaSempreLigada,
-    amareloDoisMinutos: pelada.amareloDoisMinutos,
+    amareloMinutosFora: pelada.amareloMinutosFora,
+    corTime1: pelada.corTime1,
+    corTime2: pelada.corTime2,
   };
 }
 
@@ -51,7 +58,9 @@ export function formValuesToNewPelada(values: PeladaFormValues): NewPelada {
     criteriosSorteio: values.criteriosSorteio,
     regraEmpate: values.regraEmpate,
     telaSempreLigada: values.telaSempreLigada,
-    amareloDoisMinutos: values.amareloDoisMinutos,
+    amareloMinutosFora: values.amareloMinutosFora,
+    corTime1: values.corTime1,
+    corTime2: values.corTime2,
   };
 }
 
@@ -67,6 +76,16 @@ export function validatePeladaForm(values: PeladaFormValues): string | null {
   }
   if (values.limiteGols != null && (values.limiteGols < 1 || values.limiteGols > 20)) {
     return 'Limite de gols deve ser entre 1 e 20.';
+  }
+  if (
+    values.amareloMinutosFora < 0 ||
+    values.amareloMinutosFora > 5 ||
+    !Number.isInteger(values.amareloMinutosFora)
+  ) {
+    return 'Minutos do cartão amarelo devem ser entre 0 e 5.';
+  }
+  if (coresIguais(values.corTime1, values.corTime2)) {
+    return 'Time 1 e Time 2 não podem ter a mesma cor de camisa.';
   }
   return null;
 }

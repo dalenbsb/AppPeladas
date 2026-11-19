@@ -1,4 +1,4 @@
-import type { EventoPartida, NewEventoPartida } from '@/domain/types';
+import type { EventoPartida, EventoPartidaMeta, NewEventoPartida } from '@/domain/types';
 
 import { createId, nowIso } from '../ids';
 import { mapEvento, type EventoRow } from '../mappers';
@@ -13,6 +13,42 @@ export class EventoRepository {
       [partidaId],
     );
     return rows.map(mapEvento);
+  }
+
+  async updateMeta(id: string, meta: EventoPartidaMeta | null): Promise<EventoPartida> {
+    await this.db.run('UPDATE eventos_partida SET meta_json = ? WHERE id = ?', [
+      meta ? JSON.stringify(meta) : null,
+      id,
+    ]);
+    const updated = await this.getById(id);
+    if (!updated) {
+      throw new Error(`Evento não encontrado: ${id}`);
+    }
+    return updated;
+  }
+
+  /**
+   * Remove `retornaEm` dos amarelos ainda em suspensão (ex.: liberação por gol).
+   * Mantém o registro do cartão para estatísticas/histórico.
+   */
+  async clearAmareloSuspensaoAtiva(partidaId: string, agoraIso = nowIso()): Promise<number> {
+    const eventos = await this.listByPartida(partidaId);
+    const agora = new Date(agoraIso).getTime();
+    let cleared = 0;
+    for (const ev of eventos) {
+      if (ev.tipo !== 'amarelo' || !ev.meta?.retornaEm) continue;
+      if (new Date(ev.meta.retornaEm).getTime() <= agora) continue;
+      const { retornaEm: _r, ...rest } = ev.meta;
+      const nextMeta: EventoPartidaMeta = {
+        ...rest,
+        observacao: rest.observacao
+          ? `${rest.observacao}; liberado por gol`
+          : 'liberado por gol',
+      };
+      await this.updateMeta(ev.id, nextMeta);
+      cleared += 1;
+    }
+    return cleared;
   }
 
   /** Eventos de todas as partidas de uma pelada (para agregações). */
